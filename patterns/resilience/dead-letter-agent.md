@@ -27,26 +27,7 @@ Any task that cannot be processed — after retries, after circuit breaking — 
 
 ## Diagram
 
-```
- Normal flow:
- Agent A ──► Agent B ──► result
-
- Failure flow:
- Agent A ──► Agent B ──► [failure]
-                              │
-                              ▼
-                    ┌──────────────────────┐
-                    │  Dead Letter Agent   │
-                    │                     │
-                    │  ┌───────────────┐  │
-                    │  │ Human review  │  │
-                    │  │ queue / alert │  │
-                    │  └───────────────┘  │
-                    │  ┌───────────────┐  │
-                    │  │ Audit log     │  │
-                    │  └───────────────┘  │
-                    └──────────────────────┘
-```
+![Dead Letter Agent — Agent A failure is routed to the Dead Letter Agent, which triggers Human review / alert](../../img/dead-letter-agent.png)
 
 ---
 

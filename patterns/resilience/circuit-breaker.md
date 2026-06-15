@@ -27,20 +27,7 @@ Wrap calls to external agents/tools in a circuit breaker with three states. **Cl
 
 ## Diagram
 
-```
-          ┌─────────────────────────────────┐
- call ──► │         Circuit Breaker         │
-          │                                 │
-          │  CLOSED  ──(N failures)──► OPEN │
-          │     ▲                       │   │
-          │     │     ◄──(timeout)──    │   │
-          │  HALF-OPEN ◄───────────────     │
-          │  (probe)  ──(success)──► CLOSED │
-          └─────────────────────────────────┘
-                 │               │
-               pass            fail
-               (to agent)     (fast)
-```
+![Circuit Breaker — Agent A call passes through Circuit Breaker with three states: CLOSED passes to Agent B (healthy), OPEN returns Error (fast), HALF probe tests Agent B (testing)](../../img/circuit-break.png)
 
 ---
 
