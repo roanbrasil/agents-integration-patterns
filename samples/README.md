@@ -29,9 +29,12 @@ samples/
 ```bash
 cd samples/python
 pip install -r requirements.txt
-export ANTHROPIC_API_KEY=your-key-here
 
-# Run any pattern
+# Run tests (no API key needed — uses mocks)
+python3 -m pytest tests/ -v    # 63 tests, all patterns covered
+
+# Run samples against real API
+export ANTHROPIC_API_KEY=your-key-here
 python3 messaging/direct_message.py
 python3 routing/pipeline.py
 python3 evaluation/ensemble_judge.py
