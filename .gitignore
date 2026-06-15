@@ -11,3 +11,10 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Java build
+samples/java/target/
+
+# Python cache
+**/__pycache__/
+*.pyc
