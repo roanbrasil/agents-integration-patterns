@@ -27,30 +27,7 @@ Each agent publishes an **Agent Card** — a structured capability manifest — 
 
 ## Diagram
 
-```
-Agent Card (served at /.well-known/agent.json):
-{
-  "name": "DataExtractionAgent",
-  "description": "Extracts structured data from PDFs and images",
-  "skills": [
-    { "id": "pdf-extract", "name": "PDF Text Extraction" },
-    { "id": "img-ocr",    "name": "Image OCR" }
-  ],
-  "url": "https://agents.example.com/extractor",
-  "authentication": { "schemes": ["bearer"] }
-}
-
- ┌──────────┐  "who has pdf-extract?"  ┌──────────────────┐
- │ Agent A  │ ─────────────────────── ►│  Agent Registry  │
- │          │ ◄──────────────────────  │  (Agent Cards)   │
- └──────────┘  "Agent B @ url + token" └──────────────────┘
-      │
-      │ establishes A2A channel
-      ▼
- ┌──────────┐
- │ Agent B  │
- └──────────┘
-```
+![Agent Card Registry — Agent A queries the registry with "who can extract PDFs?", receives Agent B's endpoint, then connects directly](../../img/agent-card.png)
 
 ---
 

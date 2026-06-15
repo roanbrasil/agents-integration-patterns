@@ -27,13 +27,7 @@ Establish a dedicated channel between two agents. The sender pushes a structured
 
 ## Diagram
 
-```
-┌──────────┐    Task Request    ┌──────────┐
-│ Agent A  │ ─────────────────► │ Agent B  │
-│ (sender) │                   │(receiver)│
-│          │ ◄───────────────── │          │
-└──────────┘    Task Result     └──────────┘
-```
+![Direct Message — Agent A sends Task Request to Agent B, receives Task Result](../../img/direct-message.png)
 
 ---
 

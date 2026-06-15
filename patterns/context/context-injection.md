@@ -27,25 +27,7 @@ Before invoking an agent, a host or orchestrator retrieves relevant context from
 
 ## Diagram
 
-```
- ┌───────────────────────────────────────────┐
- │                  Host                     │
- │                                           │
- │  User Query                               │
- │      │                                    │
- │      ▼                                    │
- │  ┌──────────┐     ┌─────────────────────┐ │
- │  │  MCP     │────►│  Context Assembler  │ │
- │  │ Resources│     │  (retrieve + rank)  │ │
- │  └──────────┘     └──────────┬──────────┘ │
- └─────────────────────────────┼─────────────┘
-                                │ inject context into prompt
-                                ▼
-                          ┌──────────┐
-                          │  Agent   │
-                          │ (reason) │
-                          └──────────┘
-```
+![Context Injection — Host assembles context from MCP Resources via Context Assembler, then injects it into the Agent](../../img/context-injection.png)
 
 ---
 

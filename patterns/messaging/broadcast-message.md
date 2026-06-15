@@ -27,18 +27,7 @@ Publish the message to a shared channel or topic. Interested agents subscribe to
 
 ## Diagram
 
-```
-              ┌──────────┐
-              │ Agent A  │ (Publisher)
-              └────┬─────┘
-                   │ publish("event_topic")
-        ┌──────────┼──────────┐
-        ▼          ▼          ▼
-  ┌──────────┐ ┌──────────┐ ┌──────────┐
-  │ Agent B  │ │ Agent C  │ │ Agent D  │
-  │(subscriber│ (subscriber│ (subscriber│
-  └──────────┘ └──────────┘ └──────────┘
-```
+![Broadcast Message — Agent A (Publisher) publishes to Agent B, C, and D simultaneously](../../img/broadcast-message.png)
 
 ---
 

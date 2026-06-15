@@ -27,21 +27,7 @@ Maintain a shared "blackboard" — a structured key-value store or document that
 
 ## Diagram
 
-```
-                ┌───────────────────┐
-                │    Blackboard     │
-                │  (shared context) │
-                │  key: value       │
-                │  key: value       │
-                └─────────┬─────────┘
-       ┌───────────────────┼───────────────────┐
-       ▼                   ▼                   ▼
- ┌──────────┐       ┌──────────┐       ┌──────────┐
- │ Agent A  │       │ Agent B  │       │ Agent C  │
- │(reads /  │       │(reads /  │       │(reads /  │
- │ writes)  │       │ writes)  │       │ writes)  │
- └──────────┘       └──────────┘       └──────────┘
-```
+![Blackboard — shared context space with Agent A, B, and C all reading and writing](../../img/blackboard-shared-context.png)
 
 ---
 

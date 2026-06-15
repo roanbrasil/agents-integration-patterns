@@ -27,17 +27,9 @@ Wrap capabilities as MCP Tools with structured input/output schemas. Agents disc
 
 ## Diagram
 
-```
- ┌──────────┐  tools/list    ┌────────────────────────────┐
- │  Agent   │ ─────────────► │     MCP Tool Server        │
- │          │ ◄───────────── │                            │
- │          │  [tool schemas]│  search_web(query: str)    │
- │          │                │  query_db(sql: str)        │
- │          │  tools/call    │  run_python(code: str)     │
- │          │ ─────────────► │  send_email(to, body)      │
- │          │ ◄───────────── │                            │
- └──────────┘  [result]      └────────────────────────────┘
-```
+![Tool Provider — Agent interacts with MCP Tool Server through a stateful Context State layer carrying JSON/TEXT, session_id, and memory](../../img/tool-provider.png)
+
+> **Note:** The diagram illustrates the stateful session model — the Context State layer (session_id, JSON/TEXT, memory) represents the MCP client's internal session object that tracks tool schema discovery and call state across turns. In stateless or single-turn invocations, the Agent calls `tools/list` and `tools/call` directly against the MCP Tool Server without a persistent Context State.
 
 ---
 

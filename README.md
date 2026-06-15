@@ -37,14 +37,7 @@ Before patterns, the two protocols that define the integration surface of modern
 
 MCP (Anthropic, 2024) is built on JSON-RPC 2.0, inspired by the Language Server Protocol. It standardizes how agents connect **downward** to tools, data sources, and resources.
 
-```
- Agent (Host)
-     │
-     ▼  MCP (JSON-RPC 2.0)
- ┌─────────┐   ┌─────────┐   ┌─────────┐
- │  Tools  │   │ Resources│  │ Prompts │
- └─────────┘   └─────────┘   └─────────┘
-```
+![MCP Protocol](img/mcp.png)
 
 **What MCP provides:** Tool invocation, resource access, prompt templates, sampling.
 
@@ -53,12 +46,7 @@ MCP (Anthropic, 2024) is built on JSON-RPC 2.0, inspired by the Language Server 
 
 A2A (Google, April 2025) enables agents to discover and delegate tasks to **other agents** without exposing internal state, memory, or tools. Discovery happens through **Agent Cards** — capability manifests served at `/.well-known/agent.json`.
 
-```
- Agent A ──── A2A ────► Agent B
-              │                │
-         Agent Cards     Agent Cards
-         (capabilities)  (capabilities)
-```
+![A2A Protocol](img/a2a.png)
 
 **What A2A provides:** Agent discovery, task delegation, capability negotiation, multi-framework interoperability.
 
@@ -66,14 +54,7 @@ A2A (Google, April 2025) enables agents to discover and delegate tasks to **othe
 
 Both protocols co-exist under the Linux Foundation's Agentic AI Foundation (AAIF) as of December 2025. They are not competitors:
 
-```
-             A2A (horizontal — agent-to-agent)
-               ◄──────────────────────────►
-     Agent A                              Agent B
-        │                                    │
-        ▼  MCP (vertical)              MCP  ▼
-    Tools/Data                        Tools/Data
-```
+![Complementary Axis — A2A horizontal, MCP vertical](img/complementary-axis.png)
 
 > **Security Note:** Combining A2A and MCP introduces compounded risks — confusion, downgrade, and relay-abuse attacks arise because the two protocols operate under different trust assumptions. See [Security Patterns](#-security-patterns). (arXiv:2505.03864, arXiv:2602.11327)
 

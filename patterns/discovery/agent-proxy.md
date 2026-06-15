@@ -27,16 +27,7 @@ Introduce a proxy agent that presents a uniform interface. The proxy translates 
 
 ## Diagram
 
-```
- ┌──────────────┐          ┌─────────────────┐         ┌──────────────┐
- │  Consumer    │  A2A     │   Agent Proxy   │  MCP    │  Tool Server │
- │  Agent       │ ────────►│                 │ ────────►              │
- └──────────────┘          │  - auth         │         └──────────────┘
-                           │  - versioning   │  A2A    ┌──────────────┐
-                           │  - rate limit   │ ────────►  Backend     │
-                           │  - translation  │         │  Agent B     │
-                           └─────────────────┘         └──────────────┘
-```
+![Agent Proxy — Client Agent sends request to Agent Proxy, which authenticates, transforms, and forwards to the remote Agent B](../../img/agent-proxy.png)
 
 ---
 
