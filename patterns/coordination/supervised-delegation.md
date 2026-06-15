@@ -27,24 +27,7 @@ A supervisor agent owns the high-level goal and maintains a plan. It decomposes 
 
 ## Diagram
 
-```
-                  ┌────────────────────┐
-                  │  Supervisor Agent  │
-                  │  - holds the plan  │
-                  │  - monitors status │
-                  │  - handles failures│
-                  └──────────┬─────────┘
-         ┌────────────────────┼────────────────────┐
-         ▼                    ▼                    ▼
-  ┌────────────┐       ┌────────────┐       ┌────────────┐
-  │ Worker A   │       │ Worker B   │       │ Worker C   │
-  │(specialist)│       │(specialist)│       │(specialist)│
-  └────────────┘       └────────────┘       └────────────┘
-         │                    │                    │
-         └────────────────────┼────────────────────┘
-                              ▼
-                     Status updates, results
-```
+![Supervised Delegation — Supervisor Agent monitors and guides Worker A, B, and C agents, each performing assigned tasks under supervision](../../img/Supervised-Delegation.png)
 
 ---
 

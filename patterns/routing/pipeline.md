@@ -27,12 +27,7 @@ Chain agents as pipeline stages. Each agent (filter) has a focused responsibilit
 
 ## Diagram
 
-```
- Input ──► Agent A ──► Agent B ──► Agent C ──► Output
-           (Extract)  (Analyze)  (Format)
-              │           │          │
-           focused     focused    focused
-```
+![Pipeline — Input flows through Agent A (Plan), Agent B (Execute), Agent C (Verify) sequentially to produce Output](../../img/pipeline.png)
 
 ---
 

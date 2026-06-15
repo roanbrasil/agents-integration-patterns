@@ -27,17 +27,7 @@ The orchestrator holds the workflow definition as a graph or plan. It calls agen
 
 ## Diagram
 
-```
- ┌──────────────────────────────────────────────┐
- │                Orchestrator                  │
- │                                              │
- │  ┌────────┐  ┌────────┐  ┌────────┐         │
- │  │ Step 1 │─►│ Step 2 │─►│ Step 3 │─► done  │
- │  └────┬───┘  └───┬────┘  └───┬────┘         │
- └───────┼──────────┼───────────┼──────────────┘
-         ▼          ▼           ▼
-      Agent A    Agent B     Agent C
-```
+![Orchestrator — step1 → step2 → step3 → done, each step delegating to Agent A, B, and C respectively](../../img/orchestrator.png)
 
 ---
 

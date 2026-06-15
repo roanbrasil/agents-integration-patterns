@@ -27,19 +27,7 @@ A router agent examines the content, metadata, or intent of each incoming task a
 
 ## Diagram
 
-```
-                  ┌──────────────────────────────┐
-                  │       Router Agent            │
-  Incoming ──────►│  (classifier: LLM / rules /  │
-  Task            │   embedding similarity)       │
-                  └─────────────┬────────────────┘
-       ┌─────────────────────────┼──────────────────────┐
-       ▼                         ▼                      ▼
-┌─────────────┐          ┌──────────────┐       ┌──────────────┐
-│ Code Agent  │          │Research Agent│       │  Data Agent  │
-│(if: coding) │          │(if: research)│       │(if: analysis)│
-└─────────────┘          └──────────────┘       └──────────────┘
-```
+![Content-Based Router — Incoming Task flows into Router Agent (LLM classifier or rule engine), which routes to Coding Agent, Research Agent, or Data Agent](../../img/content-based-router.png)
 
 ---
 
