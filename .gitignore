@@ -1,0 +1,13 @@
+# Portuguese versions — local only, not published to GitHub
+README.pt.md
+patterns/pt/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
