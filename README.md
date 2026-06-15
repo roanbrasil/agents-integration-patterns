@@ -652,6 +652,28 @@ How agent systems fail gracefully and recover.
 
 ---
 
+### ⚖️ Evaluation Patterns
+
+How agents assess output quality and enforce automated quality gates.
+
+---
+
+#### 21. LLM-as-Judge
+
+**Intent:** Route an agent's output through a dedicated judge agent that evaluates quality and decides whether to approve, reject, or escalate.
+
+See full pattern: [patterns/evaluation/llm-as-judge.md](patterns/evaluation/llm-as-judge.md)
+
+---
+
+#### 22. Ensemble Judge
+
+**Intent:** Send an agent's output to multiple independent judge agents simultaneously and determine the final verdict by majority vote.
+
+See full pattern: [patterns/evaluation/ensemble-judge.md](patterns/evaluation/ensemble-judge.md)
+
+---
+
 ### 🔐 Security Patterns
 
 How to establish trust, limit blast radius, and detect attacks in agent networks.
