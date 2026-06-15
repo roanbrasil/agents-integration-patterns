@@ -27,27 +27,7 @@ Using Agent Card discovery, the delegating agent queries the registry for an age
 
 ## Diagram
 
-```
- ┌──────────┐
- │ Agent A  │  (mid-task: needs PDF OCR capability)
- └────┬─────┘
-      │ 1. query registry: "pdf-ocr"
-      ▼
- ┌──────────────────┐
- │ Agent Registry   │──► returns Agent B endpoint
- └──────────────────┘
-      │
-      │ 2. A2A Task Request (with context)
-      ▼
- ┌──────────┐
- │ Agent B  │  (OCR specialist)
- └────┬─────┘
-      │ 3. A2A Task Result
-      ▼
- ┌──────────┐
- │ Agent A  │  (resumes with OCR result)
- └──────────┘
-```
+![Peer-to-Peer Delegation — Agent A discovers Agent B via Agent Registry, sends A2A Task Request, receives A2A Task Result without a central coordinator](../../img/peer-to-peer-delegation-a2a.png)
 
 ---
 
