@@ -27,22 +27,7 @@ Each agent subscribes to events relevant to its role and publishes events when i
 
 ## Diagram
 
-```
-  [task_created]
-       │
-       ▼
-  ┌─────────┐
-  │ Agent A │ ──publishes──► [data_extracted]
-  └─────────┘                       │
-                                    ▼
-                              ┌─────────┐
-                              │ Agent B │ ──publishes──► [analyzed]
-                              └─────────┘                    │
-                                                             ▼
-                                                       ┌─────────┐
-                                                       │ Agent C │ ──► [done]
-                                                       └─────────┘
-```
+![Choreography — task_created triggers Agent A, which publishes data_extracted; Agent B reacts and publishes analyzed; Agent C finalizes to done — no central coordinator](../../img/coreography.png)
 
 ---
 
