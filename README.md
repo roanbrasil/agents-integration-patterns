@@ -5,8 +5,6 @@
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-**Read in:** [Português 🇧🇷](README.pt.md)
-
 ---
 
 ## Why This Exists
@@ -16,6 +14,8 @@ In 2003, Gregor Hohpe and Bobby Woolf published *Enterprise Integration Patterns
 In 2025, we are building a new class of distributed systems: **networks of autonomous AI agents** that collaborate to solve complex tasks. These agents communicate through protocols like [Model Context Protocol (MCP)](https://modelcontextprotocol.io) and [Agent-to-Agent (A2A)](https://a2a-protocol.org), orchestrated by frameworks like LangGraph, AutoGen, CrewAI, and Spring AI.
 
 Yet we lack a shared vocabulary. Teams reinvent patterns with different names. Architecture reviews debate the same trade-offs without common terms. Papers exist that taxonomize the space (arXiv:2501.06322, arXiv:2502.14321, arXiv:2508.01186) but stop short of prescriptive, named patterns with intent, problem, and solution structure.
+
+Computer science is cyclical. The same fundamental ideas resurface across decades under different names — message queues become event streams become agent channels; remote procedure calls become tool invocations; process managers become orchestrators. As new terms and frameworks multiply around LLM agents, the noise makes integration harder, not easier. This catalog was created to cut through that noise: to give teams a stable, reusable vocabulary for connecting agents to harnesses, models, and each other — regardless of which framework or protocol they use today.
 
 **This repository fills that gap.**
 
@@ -92,12 +92,7 @@ These patterns govern how agents exchange information.
 
 **Solution:** Establish a dedicated channel between two agents. The sender pushes a structured message (task + context) to the receiver's endpoint. The receiver acknowledges receipt and returns a result.
 
-```
-┌──────────┐    Task Request    ┌──────────┐
-│ Agent A  │ ─────────────────► │ Agent B  │
-│          │ ◄───────────────── │          │
-└──────────┘    Task Result     └──────────┘
-```
+![Direct Message — Agent A sends Task Request to Agent B and receives Task Result](img/direct-message.png)
 
 **Consequences:**
 - ✅ Simple, predictable, easy to trace
@@ -109,6 +104,8 @@ These patterns govern how agents exchange information.
 
 **Related Patterns:** [Agent Card Registry](#4-agent-card-registry) (for discovery), [Supervised Delegation](#11-supervised-delegation) (for reliability).
 
+See full pattern: [patterns/messaging/direct-message.md](patterns/messaging/direct-message.md)
+
 ---
 
 #### 2. Broadcast Message
@@ -119,17 +116,7 @@ These patterns govern how agents exchange information.
 
 **Solution:** Publish the message to a shared channel or topic. Interested agents subscribe and react independently. The publisher has no knowledge of subscribers.
 
-```
-              ┌──────────┐
-              │ Agent A  │ (Publisher)
-              └────┬─────┘
-                   │ publish("order_placed")
-        ┌──────────┼──────────┐
-        ▼          ▼          ▼
-  ┌──────────┐ ┌──────────┐ ┌──────────┐
-  │ Agent B  │ │ Agent C  │ │ Agent D  │
-  └──────────┘ └──────────┘ └──────────┘
-```
+![Broadcast Message — Agent A (Publisher) publishes to Agent B, Agent C, and Agent D simultaneously](img/broadcast-message.png)
 
 **Consequences:**
 - ✅ Decoupled — publisher unaware of subscribers
@@ -141,6 +128,8 @@ These patterns govern how agents exchange information.
 
 **Related Patterns:** [Scatter-Gather](#9-scatter-gather) (when you need results back), [Choreography](#13-choreography) (event-driven coordination).
 
+See full pattern: [patterns/messaging/broadcast-message.md](patterns/messaging/broadcast-message.md)
+
 ---
 
 #### 3. Blackboard
@@ -151,20 +140,7 @@ These patterns govern how agents exchange information.
 
 **Solution:** Maintain a shared "blackboard" — a structured key-value or document store. Agents read relevant state, contribute their results, and observe changes. An optional controller monitors the blackboard and triggers agents when relevant conditions are met.
 
-```
-                ┌─────────────┐
-                │  Blackboard │
-                │  (shared    │
-                │   context)  │
-                └──────┬──────┘
-       ┌────────────────┼────────────────┐
-       ▼                ▼                ▼
- ┌──────────┐    ┌──────────┐    ┌──────────┐
- │ Agent A  │    │ Agent B  │    │ Agent C  │
- │ (reads / │    │ (reads / │    │ (reads / │
- │  writes) │    │  writes) │    │  writes) │
- └──────────┘    └──────────┘    └──────────┘
-```
+![Blackboard — shared context space read and written concurrently by Agent A, Agent B, and Agent C](img/blackboard-shared-context.png)
 
 **Consequences:**
 - ✅ Natural for parallel, loosely-coupled agents
@@ -175,6 +151,8 @@ These patterns govern how agents exchange information.
 **Known Uses:** AutoGen shared memory, multi-agent research workflows (e.g., multi-agent RAG with shared document store).
 
 **Related Patterns:** [Context Injection](#6-context-injection) (for read-only context), [Orchestrator](#12-orchestrator) (for centralized control).
+
+See full pattern: [patterns/messaging/blackboard.md](patterns/messaging/blackboard.md)
 
 ---
 
@@ -192,27 +170,7 @@ How agents find each other without hardcoded addresses.
 
 **Solution:** Each agent publishes an **Agent Card** — a structured capability manifest — at a well-known endpoint (`/.well-known/agent.json`). A registry (or peer-to-peer discovery) indexes these cards. Agents query the registry for capabilities they need, then establish direct connections.
 
-```
-Agent Card:
-{
-  "name": "DataExtractionAgent",
-  "description": "Extracts structured data from PDFs",
-  "skills": [{ "id": "pdf-extract", "name": "PDF Extraction" }],
-  "url": "https://agents.example.com/data-extractor",
-  "authentication": { "schemes": ["bearer"] }
-}
-
-  ┌──────────┐  "who can extract PDFs?"  ┌──────────────────┐
-  │ Agent A  │ ──────────────────────►  │  Agent Registry  │
-  │          │ ◄──────────────────────  │  (Agent Cards)   │
-  └──────────┘  "Agent B can do that"   └──────────────────┘
-       │
-       │ connects directly
-       ▼
-  ┌──────────┐
-  │ Agent B  │
-  └──────────┘
-```
+![Agent Card Registry — Agent A queries registry for capability, discovers Agent B via Agent Cards, then connects directly](img/agent-card.png)
 
 **Consequences:**
 - ✅ Dynamic composition — agents join/leave without reconfiguration
@@ -224,6 +182,8 @@ Agent Card:
 
 **Related Patterns:** [Content-Based Router](#8-content-based-router) (routing after discovery), [Agent Proxy](#5-agent-proxy) (abstraction layer).
 
+See full pattern: [patterns/discovery/agent-card-registry.md](patterns/discovery/agent-card-registry.md)
+
 ---
 
 #### 5. Agent Proxy
@@ -234,12 +194,7 @@ Agent Card:
 
 **Solution:** Introduce a proxy agent that presents a uniform interface. The proxy translates protocols (e.g., A2A ↔ MCP), routes to appropriate backend agents, and handles versioning.
 
-```
- ┌──────────────┐          ┌─────────────┐
- │  Consumer    │  A2A     │   Agent     │   A2A/MCP/REST
- │  Agent       │ ────────►│   Proxy     │ ─────────────►  Backend(s)
- └──────────────┘          └─────────────┘
-```
+![Agent Proxy — Consumer Agent sends A2A to Agent Proxy, which forwards via A2A, MCP, or REST to backend agents](img/agent-proxy.png)
 
 **Consequences:**
 - ✅ Decouples consumers from implementation
@@ -250,6 +205,8 @@ Agent Card:
 **Known Uses:** LangGraph remote agent nodes, API gateway patterns for agent endpoints, MCP proxy servers.
 
 **Related Patterns:** [Agent Card Registry](#4-agent-card-registry), [Circuit Breaker](#16-circuit-breaker).
+
+See full pattern: [patterns/discovery/agent-proxy.md](patterns/discovery/agent-proxy.md)
 
 ---
 
@@ -267,20 +224,7 @@ How agents share, inject, and manage contextual information — inspired by MCP 
 
 **Solution:** Before invoking an agent, a host or orchestrator retrieves relevant context from data sources (via MCP Resources) and injects it into the agent's prompt or message. The agent reasons over pre-assembled context.
 
-```
- ┌──────────────────────────────────────┐
- │              Host                    │
- │  ┌──────────┐     ┌────────────────┐ │
- │  │  MCP     │────►│ Context        │ │
- │  │ Resources│     │ Assembler      │ │
- │  └──────────┘     └───────┬────────┘ │
- └──────────────────────────┼──────────┘
-                             │ inject context
-                             ▼
-                       ┌──────────┐
-                       │  Agent   │
-                       └──────────┘
-```
+![Context Injection — MCP Resources feed into Context Assembler inside Host, which injects context into Agent before reasoning](img/context-injection.png)
 
 **Consequences:**
 - ✅ Agents stay stateless and focused on reasoning
@@ -292,6 +236,8 @@ How agents share, inject, and manage contextual information — inspired by MCP 
 
 **Related Patterns:** [Blackboard](#3-blackboard) (shared mutable context), [Tool Provider](#7-tool-provider) (active tool use vs. passive injection).
 
+See full pattern: [patterns/context/context-injection.md](patterns/context/context-injection.md)
+
 ---
 
 #### 7. Tool Provider
@@ -302,17 +248,7 @@ How agents share, inject, and manage contextual information — inspired by MCP 
 
 **Solution:** Wrap capabilities as MCP Tools with structured schemas. Agents discover available tools via the MCP `tools/list` endpoint and invoke them via `tools/call`. The tool provider handles execution and returns structured results.
 
-```
- ┌──────────┐  tools/list   ┌─────────────────────┐
- │  Agent   │ ────────────► │   MCP Tool Server   │
- │          │ ◄──────────── │                     │
- │          │  [tool list]  │  ┌───────────────┐  │
- │          │               │  │ search_web()  │  │
- │          │  tools/call   │  │ query_db()    │  │
- │          │ ────────────► │  │ run_code()    │  │
- │          │ ◄──────────── │  └───────────────┘  │
- └──────────┘  [result]     └─────────────────────┘
-```
+![Tool Provider — Agent issues tools/list and tools/call to MCP Tool Server exposing search_web, query_db, and run_code](img/tool-provider.png)
 
 **Consequences:**
 - ✅ Agents are decoupled from specific tool implementations
@@ -323,6 +259,8 @@ How agents share, inject, and manage contextual information — inspired by MCP 
 **Known Uses:** MCP Tool Servers, LangChain Tools, OpenAI Function Calling.
 
 **Related Patterns:** [Context Injection](#6-context-injection), [Least-Privilege Tool Scope](#18-least-privilege-tool-scope).
+
+See full pattern: [patterns/context/tool-provider.md](patterns/context/tool-provider.md)
 
 ---
 
@@ -340,19 +278,7 @@ How tasks are distributed across agents.
 
 **Solution:** A router agent examines the content, metadata, or intent of each incoming task and forwards it to the appropriate specialist agent. The router may use LLM-based intent classification, rule-based matching, or embedding similarity.
 
-```
-                     ┌─────────────────────┐
-                     │  Router Agent       │
-   Incoming Task ──► │  (LLM classifier or │
-                     │   rule engine)      │
-                     └──────────┬──────────┘
-              ┌─────────────────┼─────────────────┐
-              ▼                 ▼                 ▼
-       ┌──────────┐      ┌──────────┐      ┌──────────┐
-       │ Coding   │      │ Research │      │ Data     │
-       │ Agent    │      │ Agent    │      │ Agent    │
-       └──────────┘      └──────────┘      └──────────┘
-```
+![Content-Based Router — Incoming Task enters Router Agent (LLM classifier), routed to Coding Agent, Research Agent, or Data Agent](img/content-based-router.png)
 
 **Consequences:**
 - ✅ Single entry point for callers
@@ -364,6 +290,8 @@ How tasks are distributed across agents.
 
 **Related Patterns:** [Orchestrator](#12-orchestrator) (when routing is just the first step of coordination), [Agent Card Registry](#4-agent-card-registry) (capability-based routing).
 
+See full pattern: [patterns/routing/content-based-router.md](patterns/routing/content-based-router.md)
+
 ---
 
 #### 9. Scatter-Gather
@@ -374,21 +302,7 @@ How tasks are distributed across agents.
 
 **Solution:** A dispatcher sends the task to N agents simultaneously. Each agent processes independently. A gatherer/aggregator waits for responses, then synthesizes them — via voting, merging, or a synthesis agent.
 
-```
-                ┌──────────┐
-                │ Dispatch │
-                └────┬─────┘
-     ┌───────────────┼───────────────┐
-     ▼               ▼               ▼
-┌──────────┐   ┌──────────┐   ┌──────────┐
-│ Agent A  │   │ Agent B  │   │ Agent C  │
-└────┬─────┘   └────┬─────┘   └────┬─────┘
-     └───────────────┼───────────────┘
-                     ▼
-               ┌──────────┐
-               │ Aggregate│
-               └──────────┘
-```
+![Scatter-Gather — Dispatch fans out to Agent A, B, and C in parallel; all results flow into Aggregate](img/Scatter-Gather.png)
 
 **Consequences:**
 - ✅ Parallel execution reduces latency vs. sequential
@@ -400,6 +314,8 @@ How tasks are distributed across agents.
 
 **Related Patterns:** [Orchestrator](#12-orchestrator) (coordinates the scatter-gather), [Broadcast Message](#2-broadcast-message) (when you don't need results back).
 
+See full pattern: [patterns/routing/scatter-gather.md](patterns/routing/scatter-gather.md)
+
 ---
 
 #### 10. Pipeline
@@ -410,10 +326,7 @@ How tasks are distributed across agents.
 
 **Solution:** Chain agents as pipeline stages. The output of agent N becomes the input of agent N+1. Each agent has a focused responsibility.
 
-```
- Input ─► Agent A ─► Agent B ─► Agent C ─► Output
-         (Plan)    (Execute)  (Verify)
-```
+![Pipeline — Input passes through Agent A (Plan), Agent B (Execute), and Agent C (Verify) to produce Output](img/pipeline.png)
 
 **Consequences:**
 - ✅ Clear separation of concerns; each agent is testable in isolation
@@ -424,6 +337,8 @@ How tasks are distributed across agents.
 **Known Uses:** LangGraph linear graphs, CrewAI sequential process, Anthropic's "prompt chaining" workflow.
 
 **Related Patterns:** [Scatter-Gather](#9-scatter-gather) (parallelize stages when independent), [Checkpoint & Resume](#17-checkpoint--resume) (for long pipelines).
+
+See full pattern: [patterns/routing/pipeline.md](patterns/routing/pipeline.md)
 
 ---
 
@@ -441,17 +356,7 @@ How multiple agents decide who does what.
 
 **Solution:** The supervisor maintains the high-level plan, assigns tasks to worker agents (via Direct Message or A2A), monitors their progress, and retries, reassigns, or escalates on failure. The supervisor never executes domain tasks itself — it only coordinates.
 
-```
-                ┌──────────────┐
-                │  Supervisor  │
-                │  Agent       │
-                └──┬───────────┘
-      ┌────────────┼────────────┐
-      ▼            ▼            ▼
- ┌─────────┐  ┌─────────┐  ┌─────────┐
- │Worker A │  │Worker B │  │Worker C │
- └─────────┘  └─────────┘  └─────────┘
-```
+![Supervised Delegation — Supervisor Agent decomposes goal and delegates to Worker A, Worker B, and Worker C](img/Supervised-Delegation.png)
 
 **Consequences:**
 - ✅ Clear accountability; supervisor owns the goal
@@ -463,6 +368,8 @@ How multiple agents decide who does what.
 
 **Related Patterns:** [Orchestrator](#12-orchestrator) (lighter-weight, no monitoring loop), [Circuit Breaker](#16-circuit-breaker) (for worker failures).
 
+See full pattern: [patterns/coordination/supervised-delegation.md](patterns/coordination/supervised-delegation.md)
+
 ---
 
 #### 12. Orchestrator
@@ -473,16 +380,7 @@ How multiple agents decide who does what.
 
 **Solution:** The orchestrator holds the workflow graph. It calls agents in sequence or parallel according to the plan, passes state between steps, and handles branching logic. Unlike a supervisor, it follows a pre-defined plan rather than dynamically deciding based on monitoring.
 
-```
- ┌────────────────────────────────────────┐
- │           Orchestrator                 │
- │                                        │
- │  step1 ──► step2 ──► step3 ──► done  │
- │    │          │          │             │
- │    ▼          ▼          ▼             │
- │  Agent A  Agent B    Agent C           │
- └────────────────────────────────────────┘
-```
+![Orchestrator — central workflow executes step1→step2→step3 calling Agent A, Agent B, Agent C with centralized state](img/orchestrator.png)
 
 **Consequences:**
 - ✅ Predictable execution; easy to audit and test
@@ -494,6 +392,8 @@ How multiple agents decide who does what.
 
 **Related Patterns:** [Choreography](#13-choreography) (decentralized alternative), [Supervised Delegation](#11-supervised-delegation) (when monitoring is needed).
 
+See full pattern: [patterns/coordination/orchestrator.md](patterns/coordination/orchestrator.md)
+
 ---
 
 #### 13. Choreography
@@ -504,13 +404,7 @@ How multiple agents decide who does what.
 
 **Solution:** Each agent subscribes to events relevant to its role and publishes events when it completes. No agent knows the global flow — each only knows its own triggers and outputs. The workflow emerges from the interaction of locally-rational agents.
 
-```
-  [task_created] ──► Agent A ──► [data_extracted]
-                                       │
-                          [data_extracted] ──► Agent B ──► [analyzed]
-                                                                 │
-                                              [analyzed] ──► Agent C ──► [done]
-```
+![Choreography — task_created triggers Agent A, emitting data_extracted; Agent B reacts; Agent C emits done — no central coordinator](img/coreography.png)
 
 **Consequences:**
 - ✅ Highly decoupled — agents can be developed and deployed independently
@@ -522,6 +416,8 @@ How multiple agents decide who does what.
 
 **Related Patterns:** [Orchestrator](#12-orchestrator) (centralized alternative), [Dead Letter Agent](#15-dead-letter-agent) (for unhandled events).
 
+See full pattern: [patterns/coordination/choreography.md](patterns/coordination/choreography.md)
+
 ---
 
 #### 14. Peer-to-Peer Delegation (A2A)
@@ -532,19 +428,7 @@ How multiple agents decide who does what.
 
 **Solution:** Using Agent Card discovery, the agent identifies a peer with the required capability, establishes an A2A channel, sends the task, and awaits the result. The delegating agent resumes once the result is received.
 
-```
- ┌──────────┐              ┌──────────────────┐
- │ Agent A  │  1. Discover │ Agent Registry   │
- │ (needs   │ ────────────►│ (Agent Cards)    │
- │ PDF OCR) │ ◄──────────  └──────────────────┘
- │          │  2. "Agent B has pdf-ocr skill"
- │          │
- │          │  3. A2A Task Request
- │          │ ────────────────────────────────► Agent B
- │          │ ◄──────────────────────────────── (PDF OCR)
- │          │  4. A2A Task Result
- └──────────┘
-```
+![Peer-to-Peer Delegation (A2A) — Agent A discovers Agent B via registry, then delegates task directly via A2A without a central coordinator](img/peer-to-peer-delegation-a2a.png)
 
 **Consequences:**
 - ✅ No coordinator needed; scales horizontally
@@ -555,6 +439,8 @@ How multiple agents decide who does what.
 **Known Uses:** Google A2A protocol, multi-agent Salesforce Agentforce flows.
 
 **Related Patterns:** [Agent Card Registry](#4-agent-card-registry), [Supervised Delegation](#11-supervised-delegation) (when a supervisor should control delegation).
+
+See full pattern: [patterns/coordination/peer-to-peer-delegation.md](patterns/coordination/peer-to-peer-delegation.md)
 
 ---
 
@@ -572,17 +458,7 @@ How agent systems fail gracefully and recover.
 
 **Solution:** Any unprocessable task is forwarded to a Dead Letter Agent — typically a human-in-the-loop interface, an alert system, or a queue for manual review. The dead letter agent logs the failure, notifies operators, and optionally enables reprocessing.
 
-```
- ┌──────────┐  failure    ┌─────────────────┐
- │ Agent A  │ ──────────► │ Dead Letter     │
- └──────────┘             │ Agent           │
-                          │                 │
-                          │ ┌─────────────┐ │
-                          │ │ Human review│ │
-                          │ │ / alert     │ │
-                          │ └─────────────┘ │
-                          └─────────────────┘
-```
+![Dead Letter Agent — Agent A failure routes to Dead Letter Agent, which triggers Human review and alert queue](img/dead-letter-agent.png)
 
 **Consequences:**
 - ✅ No silent data loss
@@ -594,6 +470,8 @@ How agent systems fail gracefully and recover.
 
 **Related Patterns:** [Circuit Breaker](#16-circuit-breaker) (prevent cascading failures), [Checkpoint & Resume](#17-checkpoint--resume) (retry from last known state).
 
+See full pattern: [patterns/resilience/dead-letter-agent.md](patterns/resilience/dead-letter-agent.md)
+
 ---
 
 #### 16. Circuit Breaker
@@ -604,15 +482,7 @@ How agent systems fail gracefully and recover.
 
 **Solution:** Wrap calls to external agents/tools with a circuit breaker. After N consecutive failures, the circuit opens — all subsequent calls fail fast without attempting the downstream call. After a timeout, a probe call tests recovery. On success, the circuit closes.
 
-```
-              ┌────────────────┐
-   call ─────►│Circuit Breaker │
-              │                │
-              │  CLOSED: pass  │──► Agent B (healthy)
-              │  OPEN:   fail  │──► Error (fast)
-              │  HALF:   probe │──► Agent B (testing)
-              └────────────────┘
-```
+![Circuit Breaker — call enters Circuit Breaker: CLOSED passes to healthy Agent B, OPEN fast-fails, HALF-OPEN probes for recovery](img/circuit-break.png)
 
 **Consequences:**
 - ✅ Prevents cascade failures
@@ -624,6 +494,8 @@ How agent systems fail gracefully and recover.
 
 **Related Patterns:** [Agent Proxy](#5-agent-proxy) (circuit breaker is often implemented in the proxy), [Dead Letter Agent](#15-dead-letter-agent) (route failures).
 
+See full pattern: [patterns/resilience/circuit-breaker.md](patterns/resilience/circuit-breaker.md)
+
 ---
 
 #### 17. Checkpoint & Resume
@@ -634,11 +506,7 @@ How agent systems fail gracefully and recover.
 
 **Solution:** After each significant step, serialize and persist the agent's state (memory, task progress, accumulated context). On failure or interruption, load the last checkpoint and resume from that point.
 
-```
- Step 1 ──► [Checkpoint] ──► Step 2 ──► [Checkpoint] ──► Step 3
-                                                  ↑
-                                          (resume here on failure)
-```
+![Checkpoint & Resume — Step 1 → Checkpoint → Step 2 → Checkpoint → Step 3, with resume arrow on failure pointing back to last checkpoint](img/checkpoint-and-resume.png)
 
 **Consequences:**
 - ✅ Survives failures; enables long-horizon tasks
@@ -649,6 +517,8 @@ How agent systems fail gracefully and recover.
 **Known Uses:** LangGraph memory/persistence (SQLite/Postgres checkpointers), AWS Step Functions for agent workflows, 12-factor-agents principle "Own your control flow."
 
 **Related Patterns:** [Idempotent Agent](#idempotent-agent), [Dead Letter Agent](#15-dead-letter-agent).
+
+See full pattern: [patterns/resilience/checkpoint-resume.md](patterns/resilience/checkpoint-resume.md)
 
 ---
 
@@ -666,19 +536,7 @@ How to establish trust, limit blast radius, and detect attacks in agent networks
 
 **Solution:** Define tool scopes at the MCP server level. Each agent receives a connection to an MCP server configured with only the tools relevant to its role. Scope is enforced at the MCP layer, not in the agent's prompt.
 
-```
- ┌─────────────────┐        ┌────────────────────────────────┐
- │  Research Agent  │──MCP──►│ MCP Server (read-only scope)  │
- └─────────────────┘        │  - search_web()                │
-                            │  - read_document()             │
-                            └────────────────────────────────┘
-
- ┌─────────────────┐        ┌────────────────────────────────┐
- │  Execution Agent │──MCP──►│ MCP Server (write scope)       │
- └─────────────────┘        │  - write_file()                │
-                            │  - run_code()                  │
-                            └────────────────────────────────┘
-```
+![Least-Privilege Tool Scope — Research Agent connects to read-only MCP scope (search_web, read_document); Execution Agent connects to write MCP scope (write_file, run_code)](img/least-privilege-tool-scope.png)
 
 **Consequences:**
 - ✅ Limits blast radius of compromised or confused agents
@@ -690,6 +548,8 @@ How to establish trust, limit blast radius, and detect attacks in agent networks
 
 **Related Patterns:** [Trust Boundary](#19-trust-boundary), [Least-Privilege Tool Scope](#18-least-privilege-tool-scope).
 
+See full pattern: [patterns/security/least-privilege-tool-scope.md](patterns/security/least-privilege-tool-scope.md)
+
 ---
 
 #### 19. Trust Boundary
@@ -700,22 +560,7 @@ How to establish trust, limit blast radius, and detect attacks in agent networks
 
 **Solution:** Define trust tiers explicitly. Agents verify the identity of callers via Agent Card authentication (OAuth/bearer tokens) before accepting tasks. Internal agents that call each other are in a higher trust zone than externally-facing agents.
 
-```
- ┌──────────────────────────────────────────────────────┐
- │  UNTRUSTED ZONE                                      │
- │  External requests ──────────────────────────────    │
- │                   ▼                                  │
- │  ┌─────────────────────────────────────────────────┐ │
- │  │  GATEWAY ZONE (authenticated A2A)               │ │
- │  │  Gateway Agent ────────────────────────────     │ │
- │  │             ▼                                   │ │
- │  │  ┌───────────────────────────────────────────┐  │ │
- │  │  │  TRUSTED ZONE (internal agents)           │  │ │
- │  │  │  Core Agent A ◄──── Core Agent B          │  │ │
- │  │  └───────────────────────────────────────────┘  │ │
- │  └─────────────────────────────────────────────────┘ │
- └──────────────────────────────────────────────────────┘
-```
+![Trust Boundary — External requests enter Untrusted Zone, pass through Gateway Zone (authenticated A2A), and reach Trusted Zone with Core Agent A and Core Agent B](img/trust-boundary.png)
 
 **Consequences:**
 - ✅ Defense in depth — perimeter + internal trust levels
@@ -727,6 +572,8 @@ How to establish trust, limit blast radius, and detect attacks in agent networks
 
 **Related Patterns:** [Least-Privilege Tool Scope](#18-least-privilege-tool-scope), [Agent Proxy](#5-agent-proxy) (gateway role).
 
+See full pattern: [patterns/security/trust-boundary.md](patterns/security/trust-boundary.md)
+
 ---
 
 #### 20. Prompt Firewall
@@ -737,10 +584,7 @@ How to establish trust, limit blast radius, and detect attacks in agent networks
 
 **Solution:** Insert a firewall layer between external data sources and agent context. The firewall uses a separate, constrained LLM (or rule-based filter) to identify and neutralize embedded instructions before the content reaches the main agent.
 
-```
- External Data ──► [Prompt Firewall] ──► Agent Context
-   (untrusted)     (sanitize/flag)       (trusted input)
-```
+![Prompt Firewall — External Data (untrusted) passes through Prompt Firewall (sanitize/flag) to reach Agent Context (trusted input)](img/prompt-firewall.png)
 
 **Consequences:**
 - ✅ Reduces risk of prompt injection from external content
@@ -751,6 +595,8 @@ How to establish trust, limit blast radius, and detect attacks in agent networks
 **Known Uses:** Invariant Labs' guardrails, NeMo Guardrails, LlamaGuard for agent pipelines.
 
 **Related Patterns:** [Least-Privilege Tool Scope](#18-least-privilege-tool-scope), [Trust Boundary](#19-trust-boundary).
+
+See full pattern: [patterns/security/prompt-firewall.md](patterns/security/prompt-firewall.md)
 
 ---
 
