@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "dist"
+  },
+  "include": [
+    "messaging/**/*.ts",
+    "discovery/**/*.ts",
+    "context/**/*.ts",
+    "routing/**/*.ts",
+    "coordination/**/*.ts",
+    "resilience/**/*.ts",
+    "security/**/*.ts",
+    "evaluation/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

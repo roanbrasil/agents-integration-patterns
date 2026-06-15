@@ -703,6 +703,21 @@ The closest existing work:
 
 ---
 
+## Code Samples
+
+Runnable implementations of all 22 patterns across multiple languages and frameworks:
+
+| Language | Framework | Status |
+|---|---|---|
+| Python | LangChain / LangGraph | ✅ 22 samples |
+| Java | Spring AI 1.0.0 | ✅ 22 samples + 32 tests |
+| TypeScript | LangChain.js / LangGraph.js | ✅ 22 samples |
+| C# | Microsoft Semantic Kernel | ✅ 22 samples + tests |
+
+See [`samples/`](samples/) for setup instructions and all source code.
+
+---
+
 ## Related Resources
 
 ### Protocols

@@ -18,3 +18,11 @@ samples/java/target/
 # Python cache
 **/__pycache__/
 *.pyc
+
+# TypeScript build
+samples/typescript/node_modules/
+samples/typescript/dist/
+
+# C# build
+samples/csharp/**/bin/
+samples/csharp/**/obj/
