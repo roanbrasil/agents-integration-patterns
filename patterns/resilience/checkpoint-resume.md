@@ -27,15 +27,7 @@ After each significant step, serialize the agent's full state — task progress,
 
 ## Diagram
 
-```
- Step 1 ──► [Checkpoint] ──► Step 2 ──► [Checkpoint] ──► Step 3
-    ✓             ✓              ✓              ✓
-                                         ▲
-                                (crash/pause here)
-                                         │
-                                   [Resume from
-                                    Checkpoint 2]
-```
+![Checkpoint & Resume — Step 1 → [Checkpoint] → Step 2 → [Checkpoint] → Step 3, with arrow showing resume from checkpoint on failure](../../img/checkpoint-and-resume.png)
 
 ---
 

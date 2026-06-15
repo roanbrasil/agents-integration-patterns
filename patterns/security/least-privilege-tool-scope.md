@@ -27,21 +27,7 @@ Define tool scopes at the MCP server level. Each agent role receives a connectio
 
 ## Diagram
 
-```
- ┌──────────────────────┐        ┌──────────────────────────────┐
- │  Research Agent      │──MCP──►│ MCP Server: read-only scope  │
- │  (read-only tasks)   │        │  ✓ search_web()              │
- └──────────────────────┘        │  ✓ read_document()           │
-                                 │  ✗ write_file() [not exposed]│
-                                 └──────────────────────────────┘
-
- ┌──────────────────────┐        ┌──────────────────────────────┐
- │  Execution Agent     │──MCP──►│ MCP Server: write scope      │
- │  (write-capable)     │        │  ✓ write_file()              │
- └──────────────────────┘        │  ✓ run_code()                │
-                                 │  ✗ delete_database() [scoped]│
-                                 └──────────────────────────────┘
-```
+![Least-Privilege Tool Scope — Research Agent connects via MCP to read-only server (search_web, read_document); Execution Agent connects via MCP to write-scope server (write_file, run_code)](../../img/least-privilege-tool-scope.png)
 
 ---
 

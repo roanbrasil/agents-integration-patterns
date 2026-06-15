@@ -27,29 +27,7 @@ Define trust tiers explicitly. Agents verify the identity and trust level of cal
 
 ## Diagram
 
-```
- ┌──────────────────────────────────────────────────────────┐
- │  UNTRUSTED ZONE (external requests)                      │
- │                      │                                   │
- │                       ▼                                  │
- │  ┌───────────────────────────────────────────────────┐   │
- │  │  GATEWAY ZONE (authenticated A2A)                 │   │
- │  │  Gateway Agent                                    │   │
- │  │  - verifies Agent Card auth                       │   │
- │  │  - rate limits external callers                   │   │
- │  │  - translates to internal protocol                │   │
- │  │                │                                  │   │
- │  │                ▼                                  │   │
- │  │  ┌─────────────────────────────────────────────┐  │   │
- │  │  │  TRUSTED ZONE (internal agents)             │  │   │
- │  │  │  Core Agent A ◄──── Core Agent B            │  │   │
- │  │  │        │                   │                │  │   │
- │  │  │        ▼                   ▼                │  │   │
- │  │  │  Tool Server A       Tool Server B          │  │   │
- │  │  └─────────────────────────────────────────────┘  │   │
- │  └───────────────────────────────────────────────────┘   │
- └──────────────────────────────────────────────────────────┘
-```
+![Trust Boundary — External requests enter Untrusted Zone, pass through Gateway Zone (authenticated A2A via Gateway Agent), and reach the Trusted Zone where Core Agent A and Core Agent B communicate](../../img/trust-boundary.png)
 
 ---
 
