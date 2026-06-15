@@ -756,28 +756,7 @@ How to establish trust, limit blast radius, and detect attacks in agent networks
 
 ## Pattern Map
 
-```
-                        AGENTS INTEGRATION PATTERNS
-                        ═══════════════════════════
-
-  MESSAGING              DISCOVERY           CONTEXT
-  ─────────              ─────────           ───────
-  1. Direct Message      4. Agent Card       6. Context Injection
-  2. Broadcast Message      Registry         7. Tool Provider
-  3. Blackboard          5. Agent Proxy
-
-  ROUTING                COORDINATION        RESILIENCE
-  ───────                ────────────        ──────────
-  8.  Content Router    11. Supervised       15. Dead Letter Agent
-  9.  Scatter-Gather        Delegation       16. Circuit Breaker
-  10. Pipeline          12. Orchestrator     17. Checkpoint & Resume
-                        13. Choreography
-                        14. P2P Delegation   SECURITY
-                                             ────────
-                                             18. Least-Privilege Scope
-                                             19. Trust Boundary
-                                             20. Prompt Firewall
-```
+![Agents Integration Patterns — complete catalog map across 7 categories: Messaging, Discovery, Context, Routing, Coordination, Resilience, and Security](img/agents-integration-patterns.png)
 
 ---
 

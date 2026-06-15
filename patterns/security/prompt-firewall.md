@@ -27,23 +27,7 @@ Insert a firewall layer between external data sources and agent context. The fir
 
 ## Diagram
 
-```
- ┌───────────────────────────────────────────────────┐
- │  Data Flow                                        │
- │                                                   │
- │  External Source        Main Agent                │
- │  (untrusted)            (trusted)                 │
- │       │                      │                    │
- │       ▼                      │                    │
- │  ┌──────────────────┐        │                    │
- │  │  Prompt Firewall │        │                    │
- │  │                  │        │                    │
- │  │  ✓ benign text   │────────►                    │
- │  │  ✗ injected      │ block  │                    │
- │  │    instructions  │──────► ✗ (never reaches     │
- │  └──────────────────┘         main agent)         │
- └───────────────────────────────────────────────────┘
-```
+![Prompt Firewall — External Data (untrusted) passes through the Prompt Firewall (sanitize/flag) before reaching Agent Context (trusted input)](../../img/prompt-firewall.png)
 
 ---
 
