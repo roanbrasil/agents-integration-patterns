@@ -652,28 +652,6 @@ How agent systems fail gracefully and recover.
 
 ---
 
-### ⚖️ Evaluation Patterns
-
-How agents assess output quality and enforce automated quality gates.
-
----
-
-#### 21. LLM-as-Judge
-
-**Intent:** Route an agent's output through a dedicated judge agent that evaluates quality and decides whether to approve, reject, or escalate.
-
-See full pattern: [patterns/evaluation/llm-as-judge.md](patterns/evaluation/llm-as-judge.md)
-
----
-
-#### 22. Ensemble Judge
-
-**Intent:** Send an agent's output to multiple independent judge agents simultaneously and determine the final verdict by majority vote.
-
-See full pattern: [patterns/evaluation/ensemble-judge.md](patterns/evaluation/ensemble-judge.md)
-
----
-
 ### 🔐 Security Patterns
 
 How to establish trust, limit blast radius, and detect attacks in agent networks.
@@ -773,6 +751,60 @@ How to establish trust, limit blast radius, and detect attacks in agent networks
 **Known Uses:** Invariant Labs' guardrails, NeMo Guardrails, LlamaGuard for agent pipelines.
 
 **Related Patterns:** [Least-Privilege Tool Scope](#18-least-privilege-tool-scope), [Trust Boundary](#19-trust-boundary).
+
+---
+
+### ⚖️ Evaluation Patterns
+
+How agents assess output quality and enforce automated quality gates.
+
+---
+
+#### 21. LLM-as-Judge
+
+**Intent:** Route an agent's output through a dedicated judge agent that evaluates quality and decides whether to approve, reject, or escalate.
+
+**Problem:** An agent produces output that may be incorrect, incomplete, or unsafe. Human review of every response is too slow and expensive. You need an automated quality gate between production and consumption.
+
+**Solution:** A separate Judge Agent evaluates the producer's output against defined criteria and routes accordingly: approved outputs proceed; rejected outputs retry or escalate to the Dead Letter Agent.
+
+![LLM-as-Judge — Agent A produces output, Judge Agent evaluates: APPROVED flows to next step, REJECTED triggers retry or Dead Letter Agent](img/llm-as-judge.png)
+
+**Consequences:**
+- ✅ Automated quality gate — no human review on every request
+- ✅ Judge is independently tunable without changing the producer
+- ❌ Extra LLM call adds latency and cost
+- ❌ Judge verdicts are probabilistic — critical paths may still need human review
+
+**Known Uses:** LangSmith evaluators, Anthropic agent cookbook, OpenAI Evals framework.
+
+**Related Patterns:** [Ensemble Judge](#22-ensemble-judge) (more reliable multi-judge variant), [Dead Letter Agent](#15-dead-letter-agent) (escalation target for rejections).
+
+See full pattern: [patterns/evaluation/llm-as-judge.md](patterns/evaluation/llm-as-judge.md)
+
+---
+
+#### 22. Ensemble Judge
+
+**Intent:** Send an agent's output to multiple independent judge agents simultaneously and determine the final verdict by majority vote.
+
+**Problem:** A single LLM judge is unreliable for high-stakes quality gates — it can be biased, inconsistent, or systematically wrong for certain output types.
+
+**Solution:** Fan out the output to N independent judge agents in parallel, each evaluating with a specific rubric or lens (correctness, safety, relevance). Apply majority vote: ≥ M/N approvals → accepted. Disagreement triggers escalation.
+
+![Ensemble Judge — output fans out to Judge 1, 2, and 3 in parallel; results flow into Majority Vote to produce Final Verdict](img/ensemble-judge.png)
+
+**Consequences:**
+- ✅ Significantly more reliable than single judge — systematic bias requires corrupting the majority
+- ✅ Disagreement rate signals uncertainty and drives human escalation
+- ❌ N× cost and latency of single LLM-as-Judge
+- ❌ Majority vote can still be wrong if all judges share the same blind spot
+
+**Known Uses:** Multi-agent debate (Google DeepMind), HELM evaluation (Stanford), Constitutional AI (Anthropic).
+
+**Related Patterns:** [LLM-as-Judge](#21-llm-as-judge) (single-judge building block), [Scatter-Gather](#9-scatter-gather) (generic pattern this specializes).
+
+See full pattern: [patterns/evaluation/ensemble-judge.md](patterns/evaluation/ensemble-judge.md)
 
 ---
 
