@@ -1,0 +1,80 @@
+from unittest.mock import MagicMock, patch
+
+
+def mock_response(text: str) -> MagicMock:
+    r = MagicMock()
+    r.content = text
+    return r
+
+
+# ── supervised_delegation ──────────────────────────────────
+def test_supervisor_split_returns_two_subtasks():
+    with patch("coordination.supervised_delegation.llm") as m:
+        m.invoke.return_value = mock_response("Subtask A\nSubtask B")
+        from coordination.supervised_delegation import supervisor_split
+        state = {"task": "analyze data", "subtasks": [], "worker_a_result": "", "worker_b_result": "", "final_review": ""}
+        result = supervisor_split(state)
+        assert len(result["subtasks"]) == 2
+        assert result["subtasks"][0] == "Subtask A"
+
+
+def test_worker_a_uses_first_subtask():
+    with patch("coordination.supervised_delegation.llm") as m:
+        m.invoke.return_value = mock_response("Worker A done")
+        from coordination.supervised_delegation import worker_a
+        state = {"task": "t", "subtasks": ["Do A", "Do B"], "worker_a_result": "", "worker_b_result": "", "final_review": ""}
+        result = worker_a(state)
+        assert result["worker_a_result"] == "Worker A done"
+
+
+# ── orchestrator ───────────────────────────────────────────
+def test_step1_gather():
+    with patch("coordination.orchestrator.llm") as m:
+        m.invoke.return_value = mock_response("Fact 1, Fact 2, Fact 3")
+        from coordination.orchestrator import step1_gather
+        result = step1_gather({"topic": "Kubernetes", "info": "", "analysis": "", "summary": ""})
+        assert result["info"] == "Fact 1, Fact 2, Fact 3"
+
+
+def test_step2_analyze():
+    with patch("coordination.orchestrator.llm") as m:
+        m.invoke.return_value = mock_response("Key insight: scalability")
+        from coordination.orchestrator import step2_analyze
+        result = step2_analyze({"topic": "K8s", "info": "facts", "analysis": "", "summary": ""})
+        assert result["analysis"] == "Key insight: scalability"
+
+
+def test_step3_summarize():
+    with patch("coordination.orchestrator.llm") as m:
+        m.invoke.return_value = mock_response("K8s simplifies deployment.")
+        from coordination.orchestrator import step3_summarize
+        result = step3_summarize({"topic": "K8s", "info": "facts", "analysis": "insight", "summary": ""})
+        assert result["summary"] == "K8s simplifies deployment."
+
+
+# ── choreography ───────────────────────────────────────────
+def test_choreography_publish_and_consume():
+    import coordination.choreography as choreo
+    choreo.event_bus.clear()
+    choreo.publish("task_created", "analyze sales")
+    payload = choreo.consume("task_created")
+    assert payload == "analyze sales"
+
+
+def test_choreography_consume_returns_none_when_empty():
+    import coordination.choreography as choreo
+    choreo.event_bus.clear()
+    assert choreo.consume("nonexistent_event") is None
+
+
+# ── peer_to_peer_delegation ────────────────────────────────
+def test_discover_agent_finds_pdf_agent():
+    from coordination.peer_to_peer_delegation import discover_agent
+    peer = discover_agent("pdf_analysis")
+    assert peer is not None
+    assert peer["id"] == "agent_pdf_analyzer"
+
+
+def test_discover_agent_returns_none_for_unknown():
+    from coordination.peer_to_peer_delegation import discover_agent
+    assert discover_agent("unknown_capability_xyz") is None
