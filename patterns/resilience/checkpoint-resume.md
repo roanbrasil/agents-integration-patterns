@@ -1,21 +1,38 @@
 # Checkpoint & Resume
+**Category:** Resilience
+**Maturity:** ★★ Established
+**Also known as:** State Persistence, Saga Checkpoint, Workflow Resume
 
 > Persist intermediate agent state so that long-running tasks can be paused and resumed without restarting from scratch.
 
-**Category:** resilience
 **EIP Analog:** No direct EIP analog — closest to durable execution patterns (Temporal, AWS Step Functions)
 
 ---
 
-## Also Known As
+## Intent
 
-Durable Execution, State Persistence, Workflow Resumption
+After each significant step, serialize agent state to a durable store so that failures, restarts, or human interruptions resume from the last checkpoint rather than from the beginning.
+
+---
+
+## Context
+
+Long agent workflows run for minutes or hours and involve expensive LLM calls, tool executions, and accumulated context.
 
 ---
 
 ## Problem
 
-Long agent workflows run for minutes or hours and involve expensive LLM calls, tool executions, and accumulated context. A network failure, context window exhaustion, cost budget hit, or required human review can interrupt execution. Restarting from zero wastes resources, time, and can produce inconsistent results.
+A network failure, context window exhaustion, cost budget hit, or required human review can interrupt execution. Restarting from zero wastes resources, time, and can produce inconsistent results.
+
+---
+
+## Forces
+
+- **F8 Determinism / Reproducibility** — checkpointed state enables exact resume from the last successful step; no work is repeated unnecessarily.
+- **F4 Reliability** — long-running workflows survive transient failures, infrastructure restarts, and rate limit errors.
+- **F11 Operational complexity** — checkpointing requires a durable store (database, object storage); adds infrastructure.
+- **F3 Token cost** — without checkpoints, a failure near the end of a 50-step pipeline reruns everything from step 1.
 
 ---
 
@@ -42,21 +59,9 @@ After each significant step, serialize the agent's full state — task progress,
 
 ---
 
-## Consequences
+## Sample Code
 
-**Benefits:**
-- ✅ Survives network failures, process crashes, and context window resets
-- ✅ Enables human-in-the-loop review at defined points without losing progress
-- ✅ Reduces cost on failure — resume from the last step, not the beginning
-
-**Trade-offs:**
-- ❌ Checkpoint storage and schema versioning add operational complexity
-- ❌ Non-idempotent operations (e.g., sending an email) may be duplicated on resume
-- ❌ State serialization can be large for long workflows with large context
-
----
-
-## Implementation
+Runnable implementation: [samples/python/resilience/checkpoint_resume.py](../../samples/python/resilience/checkpoint_resume.py)
 
 ```python
 # LangGraph with Postgres checkpointer
@@ -110,6 +115,31 @@ result = await app.ainvoke({"topic": "AI agents"}, config=config)
 
 ---
 
+## Consequences
+
+- ✅ Long workflows survive failures — resume from last checkpoint (F8, F4 resolved)
+- ✅ Token cost savings on retry — only failed steps re-run (F3 resolved)
+- ❌ Requires durable checkpoint store (F11 introduced)
+- ❌ Checkpointing adds latency per step
+
+---
+
+## When to avoid
+
+- When workflows are short and cheap to retry from scratch.
+- When idempotency cannot be guaranteed — resuming a non-idempotent step can cause duplicate effects.
+
+---
+
+## Failure Modes Mitigated
+
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
+- **FM-2.1 Conversation reset** ✅ — checkpointed state means a restart resumes from the last good state, not from scratch.
+- **FM-1.3 Step repetition** ✅ — the checkpoint record shows which steps are done; completed steps are not re-run.
+- **FM-1.4 Loss of context** ✅ — context accumulated across steps is persisted in the checkpoint, not held only in memory.
+
+---
+
 ## Known Uses
 
 - **LangGraph checkpointers** — built-in SQLite, Postgres, and Redis checkpointers; each StateGraph step is automatically checkpointed; threads resume by ID
@@ -121,14 +151,18 @@ result = await app.ainvoke({"topic": "AI agents"}, config=config)
 
 ## Related Patterns
 
-- [Dead Letter Agent](./dead-letter-agent.md) — after max retries, forward the checkpointed state to the dead letter agent for human review
-- [Orchestrator](../coordination/orchestrator.md) — the orchestrator's state is what gets checkpointed
-- [Supervised Delegation](../coordination/supervised-delegation.md) — supervisor state (task assignments, results) should be checkpointed
+- *used-by* [Orchestrator](../coordination/orchestrator.md) — centralized state is what makes checkpointing natural.
+- *used-by* [Magentic Orchestration](../coordination/magentic.md) — the task ledger is a natural checkpoint boundary.
+- *complements* [Pipeline](../routing/pipeline.md) — pipeline steps are natural checkpoint boundaries.
+- *used-by* [12-Factor Agents](https://github.com/humanlayer/12-factor-agents) — "own your control flow" factor.
 
 ---
 
 ## References
 
+- Hohpe, G. & Woolf, B. (2003). *Enterprise Integration Patterns* — Process Manager with persistent state.
+- HumanLayer (2025). *12-Factor Agents.*
+- Cemri, M. et al. (2025). arXiv:2503.13657.
 - [LangGraph Persistence](https://langchain-ai.github.io/langgraph/concepts/persistence/)
 - [12-Factor Agents: Factor 9 — Own your control flow](https://github.com/humanlayer/12-factor-agents)
 - [Temporal: Durable Execution](https://docs.temporal.io/concepts/what-is-a-workflow)

@@ -1,21 +1,38 @@
 # Content-Based Router
+**Category:** Routing
+**Maturity:** ★★ Established
+**Also known as:** Task Router, Triage Agent, Dispatch Agent, Handoff
 
 > Route an incoming task to the appropriate agent based on the content, type, or intent of the task itself.
 
-**Category:** routing
 **EIP Analog:** [Content-Based Router](https://www.enterpriseintegrationpatterns.com/patterns/messaging/ContentBasedRouter.html)
 
 ---
 
-## Also Known As
+## Intent
 
-Semantic Router, Intent-Based Dispatcher, Agent Selector
+A system receives diverse tasks that require different specialized agents. A caller should not need to know which agent handles which type of task — that's an implementation detail. But you need a principled way to route each task to the right specialist without a central human deciding for each request.
+
+---
+
+## Context
+
+Multi-agent systems expose a single entry point to callers but internally route work to specialists. As the number of task types grows, a routing layer becomes essential to preserve encapsulation and enable independent evolution of specialists.
 
 ---
 
 ## Problem
 
 A system receives diverse tasks that require different specialized agents. A caller should not need to know which agent handles which type of task — that's an implementation detail. But you need a principled way to route each task to the right specialist without a central human deciding for each request.
+
+---
+
+## Forces
+
+- **F4 Answer quality** — routing to the right specialist dramatically improves quality vs. a generalist handling everything.
+- **F1 Latency** — classification adds a router step before the specialist call; usually worth it when specialist quality gain is large.
+- **F10 Adaptability** — new specializations can be added by registering new routes without modifying existing agents.
+- **F6 Observability** — routing decisions are explicit and loggable, making flow visible.
 
 ---
 
@@ -41,21 +58,9 @@ A router agent examines the content, metadata, or intent of each incoming task a
 
 ---
 
-## Consequences
+## Sample Code
 
-**Benefits:**
-- ✅ Single entry point for callers — they don't need to know agent topology
-- ✅ Specialist agents can evolve independently without changing callers
-- ✅ Easy to add a new specialist: register it with the router
-
-**Trade-offs:**
-- ❌ Router is a bottleneck and single point of failure
-- ❌ LLM-based classification adds latency vs. rule-based routing
-- ❌ Misclassification sends tasks to wrong agents — hard to debug without logging
-
----
-
-## Implementation
+Runnable implementation: [samples/python/routing/content_based_router.py](../../samples/python/routing/content_based_router.py)
 
 ```python
 # LLM-based intent router using LangGraph conditional edges
@@ -103,6 +108,32 @@ for node in ["coding", "research", "data_analysis"]:
 
 ---
 
+## Consequences
+
+- ✅ Right specialist for each task type — quality improvement (F4 resolved)
+- ✅ New routes addable without modifying existing agents (F10 resolved)
+- ✅ Single entry point for callers — they don't need to know agent topology
+- ❌ Router classification is a failure point — misclassification sends tasks to wrong agents
+- ❌ Latency increases by one classification step (F1 introduced)
+- ❌ Router is a bottleneck and single point of failure
+
+---
+
+## When to avoid
+
+- When all tasks are similar enough that a generalist handles them as well as a specialist.
+- When the classification itself is unreliable (the router adds error without adding value).
+
+---
+
+## Failure Modes Mitigated
+
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
+- **FM-1.2 Disobey role specification** ✅ — tasks reach agents that are registered for exactly that role.
+- **FM-2.3 Task derailment** ✅ — off-topic tasks are routed away from specialists that would mishandle them.
+
+---
+
 ## Known Uses
 
 - **AWS Bedrock Supervisor Mode** — the supervisor agent classifies tasks and routes them to registered sub-agents based on their registered capabilities
@@ -113,13 +144,15 @@ for node in ["coding", "research", "data_analysis"]:
 
 ## Related Patterns
 
-- [Agent Card Registry](../discovery/agent-card-registry.md) — the router can query the registry to discover available specialists dynamically
-- [Orchestrator](../coordination/orchestrator.md) — use when routing is just the first step of a multi-step coordination flow
-- [Scatter-Gather](./scatter-gather.md) — use instead when multiple specialists should handle the same task in parallel
+- *alternative-to* [Scatter-Gather](scatter-gather.md) — route to one vs. fan out to all.
+- *uses* [Agent Card Registry](../discovery/agent-card-registry.md) — registry maps capability to agent address.
+- *used-by* [Peer-to-Peer Delegation](../coordination/peer-to-peer-delegation.md) — P2P delegation uses content-based routing to find the right peer.
 
 ---
 
 ## References
 
-- Hohpe & Woolf (2003). *Enterprise Integration Patterns*: Content-Based Router
+- Hohpe, G. & Woolf, B. (2003). *Enterprise Integration Patterns* — Content-Based Router.
+- Microsoft (2026). *AI Agent Orchestration Patterns* — Handoff.
+- Cemri, M. et al. (2025). arXiv:2503.13657.
 - [LangGraph Conditional Edges](https://langchain-ai.github.io/langgraph/concepts/low_level/#conditional-edges)

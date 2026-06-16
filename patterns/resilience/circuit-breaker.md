@@ -1,21 +1,38 @@
 # Circuit Breaker
+**Category:** Resilience
+**Maturity:** ★★ Established
+**Also known as:** Fault Isolator, Failure Detector, Upstream Protector
 
 > Stop making calls to a failing agent or tool, allow time to recover, and automatically resume when healthy.
 
-**Category:** resilience
 **EIP Analog:** No direct EIP analog — pattern originates in Michael Nygard's *Release It!* (2007)
 
 ---
 
-## Also Known As
+## Intent
 
-Fault Isolator, Failure Limiter
+Wrap calls to external agents or tools in a stateful breaker that stops sending requests to a failing dependency, giving it time to recover, and automatically resumes when it is healthy.
+
+---
+
+## Context
+
+Agent systems depend on external agents, tools, and APIs that can fail or degrade.
 
 ---
 
 ## Problem
 
 When an agent or tool dependency fails repeatedly, continued retries amplify the load on the failing component, consume caller resources, and cascade failures to unrelated parts of the system. You need a way to detect sustained failures and stop hitting a broken dependency — while letting it recover.
+
+---
+
+## Forces
+
+- **F4 Reliability** — prevents cascade failures by stopping calls to a failing downstream agent.
+- **F1 Latency** — when OPEN, calls fail fast (no timeout wait), actually improving latency under failure conditions.
+- **F6 Observability** — circuit state (CLOSED/OPEN/HALF_OPEN) is an explicit health signal.
+- **F10 Adaptability** — the HALF_OPEN state enables automatic recovery when the downstream agent becomes healthy again.
 
 ---
 
@@ -41,21 +58,9 @@ Wrap calls to external agents/tools in a circuit breaker with three states. **Cl
 
 ---
 
-## Consequences
+## Sample Code
 
-**Benefits:**
-- ✅ Prevents cascade failures — callers get fast failures instead of hanging
-- ✅ Gives the downstream dependency time to recover without continued load
-- ✅ Observable — circuit state is a real-time health signal
-
-**Trade-offs:**
-- ❌ Requires tuning of failure thresholds and recovery timeouts per dependency
-- ❌ False positives can block healthy agents temporarily
-- ❌ Half-open probe can still fail — adds complexity to timeout logic
-
----
-
-## Implementation
+Runnable implementation: [samples/python/resilience/circuit_breaker.py](../../samples/python/resilience/circuit_breaker.py)
 
 ```python
 # Circuit breaker for agent/tool calls
@@ -111,6 +116,30 @@ async def call_research_agent(query: str) -> str:
 
 ---
 
+## Consequences
+
+- ✅ Prevents cascade failures (F4 resolved)
+- ✅ Fast failure when OPEN — better than timeout (F1 resolved)
+- ✅ Explicit health state observable (F6 resolved)
+- ✅ Automatic recovery via HALF_OPEN (F10 resolved)
+- ❌ Threshold tuning required — too sensitive trips on transient errors; too lax lets failures cascade
+
+---
+
+## When to avoid
+
+- When the downstream agent is highly reliable and failure is rare — the breaker adds overhead without value.
+- When callers cannot handle fast failure and need a blocking wait — circuit breaker requires callers to handle the OPEN state.
+
+---
+
+## Failure Modes Mitigated
+
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
+- **FM-3.1 Premature termination** ◐ — by isolating failing agents, the circuit breaker prevents one agent's failure from terminating the entire workflow.
+
+---
+
 ## Known Uses
 
 - **Spring AI Resilience4j integration** — Spring AI supports Resilience4j circuit breakers wrapping tool and agent calls
@@ -121,14 +150,15 @@ async def call_research_agent(query: str) -> str:
 
 ## Related Patterns
 
-- [Dead Letter Agent](./dead-letter-agent.md) — route tasks to when the circuit stays open and callers need a fallback
-- [Agent Proxy](../discovery/agent-proxy.md) — the proxy layer is the natural place to implement circuit breaking
-- [Checkpoint & Resume](./checkpoint-resume.md) — resume a workflow from the last checkpoint after the circuit closes
+- *complements* [Dead Letter Agent](dead-letter-agent.md) — circuit breaker prevents new calls; dead letter handles the ones that got through and failed.
+- *complements* [Agent Proxy](../discovery/agent-proxy.md) — the proxy is where the circuit breaker is typically implemented.
+- *used-by* [Magentic Orchestration](../coordination/magentic.md) — stall detection in Magentic is a soft circuit breaker for emergent plans.
 
 ---
 
 ## References
 
-- Nygard, M. (2007). *Release It!*. Pragmatic Bookshelf. Chapter 5: Stability Patterns.
+- Nygard, M. (2007). *Release It!* — Circuit Breaker pattern.
+- Cemri, M. et al. (2025). arXiv:2503.13657.
 - [Resilience4j Circuit Breaker](https://resilience4j.readme.io/docs/circuitbreaker)
 - [Spring AI: Resilience Patterns](https://docs.spring.io/spring-ai/reference/)

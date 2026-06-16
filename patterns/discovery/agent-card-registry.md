@@ -1,21 +1,35 @@
 # Agent Card Registry
 
-> Allow agents to advertise their capabilities and be discovered by other agents at runtime without prior configuration.
-
-**Category:** discovery
-**EIP Analog:** No direct EIP analog — closest is Service Registry (SOA/microservices)
+**Category:** Discovery
+**Maturity:** ★★ Established
+**Also known as:** Service Registry, Capability Registry, Agent Directory, Well-Known Endpoint
 
 ---
 
-## Also Known As
+## Intent
 
-Capability Registry, Agent Marketplace, Agent Discovery Service
+Allow agents to advertise their capabilities and be discovered by other agents at runtime without prior configuration.
+
+---
+
+## Context
+
+In a dynamic multi-agent system, the set of available agents changes continuously. New agents join, capabilities evolve, and agents may be versioned or temporarily unavailable. Routing decisions must happen at runtime based on current, live capability information — not static configuration.
 
 ---
 
 ## Problem
 
-In a dynamic multi-agent system, you cannot hardcode which agent handles which task. New agents join, capabilities change, and agents may be versioned or temporarily unavailable. Routing decisions must happen at runtime based on current, live capability information — not static configuration.
+You cannot hardcode which agent handles which task when agent deployment is dynamic. Callers need a way to find an agent that can satisfy a capability requirement without knowing its address in advance, and without a human operator reconfiguring the system each time an agent is added or replaced.
+
+---
+
+## Forces
+
+- **F2 Coupling** — the registry is an indirection layer: callers discover agents by capability, not by address, decoupling them from deployment topology.
+- **F11 Operational complexity** — the registry itself becomes infrastructure that must be kept current; stale entries are worse than no entry.
+- **F9 Scalability** — new agents register themselves; no central reconfiguration needed.
+- **F10 Adaptability** — agents can be replaced or upgraded transparently if they maintain the same Agent Card capabilities.
 
 ---
 
@@ -41,21 +55,9 @@ Each agent publishes an **Agent Card** — a structured capability manifest — 
 
 ---
 
-## Consequences
+## Sample Code
 
-**Benefits:**
-- ✅ Dynamic composition — agents join and leave without global reconfiguration
-- ✅ Capability-based routing — consumers find agents by what they can do, not by name
-- ✅ Enables multi-framework interoperability (LangGraph agents discoverable by AutoGen agents)
-
-**Trade-offs:**
-- ❌ Registry becomes a single point of failure; requires high availability
-- ❌ Stale cards if agents fail without deregistering
-- ❌ Trust verification of discovered agents requires additional security layers
-
----
-
-## Implementation
+Runnable implementation: [samples/python/discovery/agent_card_registry.py](../../samples/python/discovery/agent_card_registry.py)
 
 ```python
 # Serving an Agent Card (A2A spec)
@@ -100,6 +102,38 @@ async def find_agent_with_skill(registry_url: str, skill_id: str) -> str:
 
 ---
 
+## Consequences
+
+**Benefits:**
+
+- Dynamic composition — agents join and leave without global reconfiguration *(resolves F9 Scalability)*
+- Capability-based routing — consumers find agents by what they can do, not by name *(resolves F2 Coupling)*
+- Enables multi-framework interoperability (LangGraph agents discoverable by AutoGen agents) *(resolves F10 Adaptability)*
+
+**Trade-offs:**
+
+- Registry becomes a single point of failure; requires high availability *(amplifies F11 Operational complexity)*
+- Stale cards if agents fail without deregistering *(amplifies F11 Operational complexity)*
+- Trust verification of discovered agents requires additional security layers
+
+---
+
+## When to avoid
+
+- When the set of agents is fixed and known at design time — hard-code the addresses and skip the registry overhead.
+- When registry staleness cannot be managed — a stale registry causes silent misrouting, worse than no discovery.
+
+---
+
+## Failure Modes Mitigated
+
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
+
+- **FM-1.2 Disobey role specification** ◐ — capability-based discovery routes tasks to agents registered for the correct role, reducing misrouting.
+- **FM-2.3 Task derailment** ◐ — a task reaches an agent with the declared capability, reducing derailment from wrong-agent execution.
+
+---
+
 ## Known Uses
 
 - **Google A2A Protocol** — defines the Agent Card schema and `/.well-known/agent.json` convention as the standard discovery mechanism
@@ -110,13 +144,15 @@ async def find_agent_with_skill(registry_url: str, skill_id: str) -> str:
 
 ## Related Patterns
 
-- [Agent Proxy](./agent-proxy.md) — use to present a stable interface after discovery
-- [Content-Based Router](../routing/content-based-router.md) — use Agent Card data to route tasks at the orchestrator level
-- [Direct Message](../messaging/direct-message.md) — the communication pattern used after discovery
+- *used-by* [Agent Proxy](agent-proxy.md) — the proxy discovers the backend via the registry.
+- *used-by* [Peer-to-Peer Delegation](../coordination/peer-to-peer-delegation.md) — agents use the registry to find capable peers.
+- *used-by* [Content-Based Router](../routing/content-based-router.md) — the router resolves capability to agent address via the registry.
 
 ---
 
 ## References
 
+- Google (2025). *A2A Protocol* — Agent Card specification (/.well-known/agent.json).
+- Sarkar, A. & Sarkar, S. (2025). *Survey of LLM Agent Communication with MCP.* arXiv:2506.05364.
 - [A2A Agent Card Specification](https://a2a-protocol.org/specification/latest/Agent-to-Agent%20Protocol%20Specification#agent-card)
 - Google Developer Blog: [A2A: A New Era of Agent Interoperability](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/)

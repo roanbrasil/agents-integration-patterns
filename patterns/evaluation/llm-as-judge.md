@@ -2,20 +2,37 @@
 
 > Route an agent's output through a dedicated judge agent that evaluates quality and decides whether to approve, reject, or escalate.
 
-**Category:** evaluation
+**Category:** Evaluation
+**Maturity:** ★★ Established
 **EIP Analog:** [Message Validator](https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessageValidator.html) + [Content-Based Router](https://www.enterpriseintegrationpatterns.com/patterns/messaging/ContentBasedRouter.html)
+**Also known as:** Evaluator Agent, Quality Gate, Auto-Reviewer, Reflection
 
 ---
 
-## Also Known As
+## Intent
 
-Agent Evaluator, Output Validator, Quality Gate
+Introduce an independent LLM invocation dedicated solely to evaluating another agent's output against defined criteria, returning an explicit verdict and reason that can drive routing decisions (approve, retry, escalate).
+
+---
+
+## Context
+
+Agents produce outputs that may be incorrect, incomplete, off-topic, or unsafe. Direct use of unverified output in downstream steps propagates errors silently. Human review of every response is too slow and expensive at scale.
 
 ---
 
 ## Problem
 
 An agent produces output that may be incorrect, incomplete, or unsafe. You cannot trust the output blindly, but human review of every response is too slow and expensive. You need an automated quality gate between production and consumption.
+
+---
+
+## Forces
+
+- **F4 Answer quality / Reliability** — automated quality gates are scalable; human review is not. The LLM judge is the tradeoff point.
+- **F1 Latency / F3 Token cost** — every evaluated output requires one additional LLM call; this is the pattern's fixed cost.
+- **F8 Determinism** — judge verdicts can be inconsistent across runs; this is the pattern's main liability (mitigated by Ensemble Judge).
+- **F6 Observability** — the judge's verdict and reason are explicit, loggable, and auditable.
 
 ---
 
@@ -42,21 +59,9 @@ Route the agent's output through a Judge Agent — a separate LLM invocation wit
 
 ---
 
-## Consequences
+## Sample Code
 
-**Benefits:**
-- ✅ Automated quality gate without human review on every request
-- ✅ Judge is independently tunable — swap evaluation criteria without changing the producer
-- ✅ Verdict reasoning is auditable and explainable
-
-**Trade-offs:**
-- ❌ Adds latency and cost — an extra LLM call per evaluation
-- ❌ Judge can be wrong (LLM evaluators are probabilistic); critical paths may still need human review
-- ❌ Judge prompt quality determines gate quality — poorly designed rubrics produce noisy verdicts
-
----
-
-## Implementation
+Runnable implementation: [samples/python/evaluation/llm_as_judge.py](../../samples/python/evaluation/llm_as_judge.py)
 
 ```python
 from langchain_anthropic import ChatAnthropic
@@ -110,6 +115,35 @@ graph.add_edge("dead_letter", END)
 
 ---
 
+## Consequences
+
+- ✅ Automated quality gate — scales where human review cannot (F4 resolved)
+- ✅ Explicit verdict and reason — auditable (F6 resolved)
+- ✅ Judge is independently tunable — swap evaluation criteria without changing the producer
+- ❌ Single judge can be biased, inconsistent, or share blind spots with the producer (F8 cost)
+- ❌ Additional latency and token cost per evaluation (F1, F3 introduced)
+- ❌ Judge prompt quality determines gate quality — poorly designed rubrics produce noisy verdicts
+
+---
+
+## When to Avoid
+
+- When the producer and judge use the same model with the same prompt style — correlated errors defeat the purpose.
+- When the task is so open-ended that "correct" cannot be defined without human judgment.
+- When evaluation cost exceeds the value of catching errors (low-stakes outputs).
+
+---
+
+## Failure Modes Mitigated
+
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
+
+- **FM-3.2 No or incomplete verification** ✅ — the judge is an explicit verification step; output cannot proceed without a verdict.
+- **FM-2.6 Reasoning–action mismatch** ✅ — the judge checks whether the output follows from the task specification, catching mismatches.
+- **FM-1.1 Disobey task specification** ✅ — a correctly prompted judge verifies the output against the original task spec.
+
+---
+
 ## Known Uses
 
 - **Anthropic's agent cookbook** — recommends a separate evaluator LLM call to verify agent outputs before using them in downstream steps
@@ -120,14 +154,17 @@ graph.add_edge("dead_letter", END)
 
 ## Related Patterns
 
-- [Ensemble Judge](./ensemble-judge.md) — use when a single judge is not reliable enough; N judges, majority vote
-- [Dead Letter Agent](../resilience/dead-letter-agent.md) — the escalation target for permanently rejected outputs
-- [Pipeline](../routing/pipeline.md) — LLM-as-Judge is typically a node in a pipeline, not a standalone pattern
+- *refines-into* [Ensemble Judge](ensemble-judge.md) — use multiple judges when a single judge's reliability is insufficient.
+- *used-by* [Pipeline](../routing/pipeline.md) — the verifier step in a pipeline is typically an LLM-as-Judge.
+- *used-by* [Magentic Orchestration](../coordination/magentic.md) — the manager can use a judge to verify specialist outputs.
+- *complements* [Dead Letter Agent](../resilience/dead-letter-agent.md) — rejected outputs after max retries route to dead letter.
 - [Scatter-Gather](../routing/scatter-gather.md) — Ensemble Judge is a specialization of Scatter-Gather for evaluation
 
 ---
 
 ## References
 
-- Zheng et al. (2023). "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena." arXiv:2306.05685
+- Zheng, L. et al. (2023). *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena.* arXiv:2306.05685
+- Cemri, M. et al. (2025). *Why Do Multi-Agent LLM Systems Fail?* arXiv:2503.13657.
+- Bai, Y. et al. (2022). *Constitutional AI.* Anthropic.
 - [LangSmith: LLM-as-judge evaluators](https://docs.smith.langchain.com/evaluation/how_to_guides/llm_as_judge)

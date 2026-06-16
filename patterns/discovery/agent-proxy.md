@@ -1,21 +1,39 @@
 # Agent Proxy
 
+**Category:** Discovery
+**Maturity:** ★★ Established
+**Also known as:** Gateway Agent, Protocol Adapter, Agent Façade
+
 > Provide a stable interface to an agent (or group of agents) while hiding implementation details, protocol differences, or versioning.
 
-**Category:** discovery
 **EIP Analog:** [Messaging Gateway](https://www.enterpriseintegrationpatterns.com/patterns/messaging/MessagingGateway.html)
 
 ---
 
-## Also Known As
+## Intent
 
-Agent Gateway, Agent Facade, Protocol Adapter
+Introduce a proxy agent that presents a uniform interface to consumers, hiding whether the backend is a single LLM call, a sub-graph of agents, an external API, or a different protocol. The proxy centralises cross-cutting concerns — authentication, rate limiting, protocol translation, and versioning — so that neither the consumer nor the backend need to carry that complexity.
+
+---
+
+## Context
+
+Multi-agent systems frequently need to integrate agents built with different frameworks (LangGraph, AutoGen, CrewAI), exposed over different protocols (A2A, MCP, REST), or owned by different teams with independent release cycles. Without a stable façade, every consumer must negotiate the address, protocol, and authentication scheme of every backend agent directly.
 
 ---
 
 ## Problem
 
 Consumers of an agent's capabilities should not need to know whether the agent is a single LLM call, a sub-graph of agents, an external API, or which protocol it speaks. Exposing implementation details forces consumers to change when the implementation changes. You also need a single place to handle versioning, load balancing, authentication, and protocol translation.
+
+---
+
+## Forces
+
+- **F2 Coupling** — the proxy is the indirection layer; callers do not depend on the backend agent's address, protocol, or authentication scheme.
+- **F7 Trust asymmetry** — the proxy is the single enforcement point for auth, rate limiting, and input sanitization before the backend agent is reached.
+- **F1 Latency** — every call adds one hop; acceptable when the benefits (protocol translation, retry, auth) justify it.
+- **F4 Reliability** — the proxy can add retry logic and circuit-breaker behavior that the caller does not need to implement.
 
 ---
 
@@ -29,9 +47,7 @@ Introduce a proxy agent that presents a uniform interface. The proxy translates 
 
 ![Agent Proxy — Client Agent sends request to Agent Proxy, which authenticates, transforms, and forwards to the remote Agent B](../../img/agent-proxy.png)
 
----
-
-## Participants
+### Participants
 
 | Participant | Role |
 |---|---|
@@ -41,21 +57,9 @@ Introduce a proxy agent that presents a uniform interface. The proxy translates 
 
 ---
 
-## Consequences
+## Sample Code
 
-**Benefits:**
-- ✅ Decouples consumers from implementation — swap backends without touching consumers
-- ✅ Single place for cross-cutting concerns: auth, logging, rate limiting, circuit breaking
-- ✅ Enables A/B testing and gradual migration between agent versions
-
-**Trade-offs:**
-- ❌ Adds a network hop and latency
-- ❌ The proxy itself becomes a bottleneck if it holds state
-- ❌ Protocol translation is complex and can introduce subtle semantic mismatches
-
----
-
-## Implementation
+Runnable implementation: [samples/python/discovery/agent_proxy.py](../../samples/python/discovery/agent_proxy.py)
 
 ```python
 # MCP proxy server that wraps an A2A agent as an MCP tool
@@ -93,23 +97,54 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
 
 ---
 
+## Consequences
+
+**Benefits:**
+- Decouples consumers from implementation — swap backends without touching consumers.
+- Single place for cross-cutting concerns: auth, logging, rate limiting, circuit breaking.
+- Enables A/B testing and gradual migration between agent versions.
+
+**Trade-offs:**
+- Adds a network hop and latency.
+- The proxy itself becomes a bottleneck if it holds state.
+- Protocol translation is complex and can introduce subtle semantic mismatches.
+
+---
+
+## When to Avoid
+
+- When you control both caller and backend and no protocol translation is needed — direct calls are simpler.
+- When the proxy becomes a bottleneck under load — consider horizontal scaling or removing it.
+
+---
+
+## Failure Modes Mitigated
+
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
+
+- **FM-2.3 Task derailment** (partial) — the proxy validates and sanitizes inputs before forwarding, reducing injection-driven derailment (overlaps with Trust Boundary).
+- **FM-3.1 Premature termination** (partial) — retry logic in the proxy prevents transient failures from terminating the task prematurely.
+
+---
+
 ## Known Uses
 
-- **LangGraph remote agent nodes** — LangGraph can expose a sub-graph as a remote agent endpoint, acting as a proxy to a complex internal workflow
-- **MCP proxy servers** — proxy servers that aggregate multiple MCP tool servers behind a single endpoint
-- **API gateways for agent endpoints** — cloud-hosted gateways (AWS API Gateway, Azure APIM) acting as proxies to agent services
+- **LangGraph remote agent nodes** — LangGraph can expose a sub-graph as a remote agent endpoint, acting as a proxy to a complex internal workflow.
+- **MCP proxy servers** — proxy servers that aggregate multiple MCP tool servers behind a single endpoint.
+- **API gateways for agent endpoints** — cloud-hosted gateways (AWS API Gateway, Azure APIM) acting as proxies to agent services.
 
 ---
 
 ## Related Patterns
 
-- [Agent Card Registry](./agent-card-registry.md) — the proxy registers itself in the registry, abstracting the real backends
-- [Circuit Breaker](../resilience/circuit-breaker.md) — implement circuit breaking inside the proxy to protect consumers from backend failures
-- [Direct Message](../messaging/direct-message.md) — consumers send Direct Messages to the proxy, not to the backend
+- *uses* [Agent Card Registry](agent-card-registry.md) — the proxy discovers the backend via the registry.
+- *complements* [Trust Boundary](../security/trust-boundary.md) — the proxy is often the gateway tier implementation.
+- *complements* [Circuit Breaker](../resilience/circuit-breaker.md) — proxy + circuit breaker = a robust remote agent façade.
 
 ---
 
 ## References
 
-- Hohpe & Woolf (2003). *Enterprise Integration Patterns*: Messaging Gateway
+- Hohpe, G. & Woolf, B. (2003). *Enterprise Integration Patterns* — Message Endpoint, Gateway.
+- *From Glue-Code to Protocols: A Critical Analysis of A2A and MCP Security.* arXiv:2505.03864.
 - [MCP Proxy Servers](https://modelcontextprotocol.io/docs/concepts/architecture)

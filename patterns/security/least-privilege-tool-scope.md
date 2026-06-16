@@ -2,20 +2,36 @@
 
 > Grant each agent access only to the minimum set of tools and resources required for its task.
 
-**Category:** security
+**Category:** Security
+**Maturity:** ★ Emerging
+**Also known as:** Scoped Tool Access, Tool ACL, Minimal Capability, Tool Allowlist
 **EIP Analog:** No direct EIP analog — applies the security principle of least privilege to the MCP tool layer
 
 ---
 
-## Also Known As
+## Intent
 
-Minimal Tool Surface, Scoped MCP Server, Tool Sandboxing
+Grant each agent access only to the minimum set of tools and resources required for its task. Tool scope is enforced at the MCP server level, not by prompting the agent to self-restrict.
+
+---
+
+## Context
+
+Multi-agent systems connect agents to powerful tools: code execution, database writes, file deletion, external API calls. When every agent shares the same tool surface, any failure — prompt injection, LLM error, or misconfigured prompt — carries the same blast radius as the most powerful tool in the set.
 
 ---
 
 ## Problem
 
-Agents with access to powerful tools — code execution, database writes, file deletion, external API calls — can cause irreversible damage through prompt injection attacks, LLM errors, or misconfigured prompts. Giving every agent access to all tools amplifies the blast radius of any failure.
+Agents with access to powerful tools can cause irreversible damage through prompt injection attacks, LLM errors, or misconfigured prompts. Giving every agent access to all tools amplifies the blast radius of any failure and makes security audits impractical because no single agent's capability surface is bounded or inspectable.
+
+---
+
+## Forces
+
+- **F5 Blast radius vs. F10 Adaptability** — the core tension: scoping tools limits what a compromised or misbehaving agent can do (F5), but also limits what a legitimate agent can accomplish dynamically (F10).
+- **F7 Trust asymmetry** — different agents warrant different tool access; a research agent should not have write access regardless of what it asks for.
+- **F11 Operational complexity** — maintaining per-agent tool allowlists adds configuration overhead; allowlists must be updated when agent roles evolve.
 
 ---
 
@@ -41,21 +57,9 @@ Define tool scopes at the MCP server level. Each agent role receives a connectio
 
 ---
 
-## Consequences
+## Sample Code
 
-**Benefits:**
-- ✅ Limits blast radius — a compromised or confused agent can only damage what's in its scope
-- ✅ Tool access is declared and auditable — security reviews can verify scope definitions
-- ✅ Defense against prompt injection: injected instructions cannot invoke out-of-scope tools
-
-**Trade-offs:**
-- ❌ Requires upfront role design — scopes must be defined before agents are deployed
-- ❌ Overly restrictive scopes block legitimate agent actions; requires iterative tuning
-- ❌ Scope management overhead grows as the number of agent roles increases
-
----
-
-## Implementation
+Runnable implementation: [samples/python/security/least_privilege_tool_scope.py](../../samples/python/security/least_privilege_tool_scope.py)
 
 ```python
 # Scoped MCP server — only exposes read-only tools to the research agent
@@ -107,6 +111,29 @@ async def execution_tools() -> list[types.Tool]:
 
 ---
 
+## Consequences
+
+- ✅ Limits blast radius on compromise (F5 resolved)
+- ✅ Makes each agent's capability surface explicit and auditable
+- ❌ Overly restrictive scopes slow legitimate work (F10 cost)
+- ❌ Allowlist maintenance overhead (F11 introduced)
+
+---
+
+## When to Avoid
+
+- When all agents are fully trusted and operate in a closed, isolated environment.
+- When the overhead of per-agent allowlists exceeds the security benefit (low-risk internal tools).
+
+---
+
+## Failure Modes Mitigated
+
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
+Beyond MAST, this pattern is the primary defense against **privilege escalation** — an agent calling tools outside its intended role — and limits the damage from **prompt injection** attacks that try to use the agent as a proxy for destructive tool calls.
+
+---
+
 ## Known Uses
 
 - **Anthropic MCP permission model** — Claude Desktop and Claude.ai allow users to configure which MCP servers (and therefore which tools) each session can access
@@ -117,14 +144,15 @@ async def execution_tools() -> list[types.Tool]:
 
 ## Related Patterns
 
-- [Trust Boundary](./trust-boundary.md) — tool scope is enforced within a trust zone; trust boundaries define which agents get which scopes
-- [Prompt Firewall](./prompt-firewall.md) — complement least-privilege scope with prompt injection defense
-- [Tool Provider](../context/tool-provider.md) — the MCP Tool Server pattern being scoped here
+- *complements* [Trust Boundary](trust-boundary.md) — Trust Boundary controls *who* can call; Least-Privilege controls *what* they can do once trusted.
+- *complements* [Prompt Firewall](prompt-firewall.md) — firewall sanitizes inputs; least-privilege limits outputs (tool calls).
+- *used-by* [Tool Provider](../context/tool-provider.md) — the tool provider implements the allowlist enforcement.
 
 ---
 
 ## References
 
-- [MCP Security Best Practices](https://modelcontextprotocol.io/docs/concepts/architecture)
+- OWASP (2025). *LLM Top 10* — LLM06: Excessive Agency.
+- *From Glue-Code to Protocols: A Critical Analysis of A2A and MCP Security.* arXiv:2505.03864.
+- Cemri, M. et al. (2025). arXiv:2503.13657.
 - [Anthropic: Building Effective Agents — Minimal Footprint](https://www.anthropic.com/research/building-effective-agents)
-- arXiv:2505.03864 — analyzes security risks from combined A2A+MCP tool access; recommends scope separation

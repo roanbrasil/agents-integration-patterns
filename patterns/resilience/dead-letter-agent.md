@@ -1,21 +1,37 @@
 # Dead Letter Agent
+**Category:** Resilience
+**Maturity:** ★★ Established
+**Also known as:** Dead Letter Queue, Error Handler, Fallback Agent
 
 > Route tasks that cannot be processed to a dedicated agent or human for inspection and resolution.
 
-**Category:** resilience
 **EIP Analog:** [Dead Letter Channel](https://www.enterpriseintegrationpatterns.com/patterns/messaging/DeadLetterChannel.html)
 
 ---
 
-## Also Known As
+## Intent
 
-Fallback Agent, Human-in-the-Loop Escalation, Error Sink
+Route tasks that cannot be processed — after retries and circuit breaking — to a dedicated handler that ensures no failure is silently dropped.
+
+---
+
+## Context
+
+In any agent system, some tasks will fail: the model refuses, the tool errors out, the task is malformed, or the confidence is too low to proceed.
 
 ---
 
 ## Problem
 
-In any agent system, some tasks will fail: the model refuses, the tool errors out, the task is malformed, or the confidence is too low to proceed. Without a safety net, failed tasks are silently dropped, leaving users without responses and operators without visibility.
+Without a safety net, failed tasks are silently dropped, leaving users without responses and operators without visibility into what went wrong or how often.
+
+---
+
+## Forces
+
+- **F4 Reliability** — no silent data loss; every failed task has a handler.
+- **F6 Observability** — dead letter volume is a system health signal; high volume indicates a systemic issue upstream.
+- **F11 Operational complexity** — requires monitoring the dead letter handler; without human attention, it becomes a black hole.
 
 ---
 
@@ -42,21 +58,9 @@ Any task that cannot be processed — after retries, after circuit breaking — 
 
 ---
 
-## Consequences
+## Sample Code
 
-**Benefits:**
-- ✅ Zero silent data loss — every failure is captured
-- ✅ Human-in-the-loop safety net for edge cases the system cannot handle autonomously
-- ✅ Dead letter volume is an observable system health metric
-
-**Trade-offs:**
-- ❌ Requires human attention and operational process to drain the dead letter queue
-- ❌ High dead letter volume signals a systemic problem that must be addressed at the source
-- ❌ Task context must be preserved through the failure path to be useful for review
-
----
-
-## Implementation
+Runnable implementation: [samples/python/resilience/dead_letter_agent.py](../../samples/python/resilience/dead_letter_agent.py)
 
 ```python
 # Dead Letter Agent with LangGraph interrupt
@@ -102,6 +106,31 @@ graph.add_edge("dead_letter", END)
 
 ---
 
+## Consequences
+
+- ✅ No silent data loss (F4 resolved)
+- ✅ Human-in-the-loop safety net
+- ✅ Dead letter volume is a free health metric (F6 resolved)
+- ❌ Requires monitoring and human attention
+- ❌ Does not fix the upstream failure that sent the task here
+
+---
+
+## When to avoid
+
+- When every task is idempotent and retry is sufficient — a dead letter agent adds infrastructure without value.
+- When tasks can safely be dropped (rare; document this decision explicitly).
+
+---
+
+## Failure Modes Mitigated
+
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
+- **FM-3.2 No or incomplete verification** ◐ — failed tasks are not silently dropped; they are routed to a handler for inspection.
+- **FM-2.2 Fail to ask for clarification** ◐ — the dead letter handler can escalate to a human who can clarify and resubmit.
+
+---
+
 ## Known Uses
 
 - **LangGraph `interrupt()`** — pauses agent execution at a node and waits for human input; the canonical implementation of human-in-the-loop dead letter handling
@@ -112,14 +141,16 @@ graph.add_edge("dead_letter", END)
 
 ## Related Patterns
 
-- [Circuit Breaker](./circuit-breaker.md) — prevent cascading failures before they reach the dead letter agent
-- [Checkpoint & Resume](./checkpoint-resume.md) — preserve task state so the dead letter agent has full context
-- [Supervised Delegation](../coordination/supervised-delegation.md) — the supervisor may route to a dead letter agent as part of its failure handling
+- *used-by* [Ensemble Judge](../evaluation/ensemble-judge.md) — rejected outputs after max retries route to dead letter.
+- *used-by* [Group Chat](../coordination/group-chat.md) — tasks that exceed the iteration cap escalate here.
+- *used-by* [Magentic Orchestration](../coordination/magentic.md) — stall escalation target.
+- *complements* [Circuit Breaker](circuit-breaker.md) — circuit breaker prevents calls; dead letter handles the ones that got through and failed.
 
 ---
 
 ## References
 
-- Hohpe & Woolf (2003). *Enterprise Integration Patterns*: Dead Letter Channel
+- Hohpe, G. & Woolf, B. (2003). *Enterprise Integration Patterns* — Dead Letter Channel.
+- Cemri, M. et al. (2025). arXiv:2503.13657.
 - [Anthropic: Human-in-the-Loop Patterns](https://www.anthropic.com/research/building-effective-agents)
 - [LangGraph: How to Add Human-in-the-Loop](https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/)

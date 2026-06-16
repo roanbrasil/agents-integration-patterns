@@ -1,21 +1,37 @@
 # Choreography
+**Category:** Coordination
+**Maturity:** ★★ Established
+**Also known as:** Event-Driven Coordination, Decentralized Coordination, Reactive Agents
 
 > Agents coordinate through events without a central controller — each agent knows what to do when it receives a specific event.
 
-**Category:** coordination
 **EIP Analog:** [Event-Driven Consumer](https://www.enterpriseintegrationpatterns.com/patterns/messaging/EventDrivenConsumer.html)
 
 ---
 
-## Also Known As
+## Intent
 
-Event-Driven Coordination, Reactive Agent Network, Decentralized Workflow
+Enable agents to coordinate at scale without a central coordinator by having each agent react to events it subscribes to and publish events that trigger downstream agents.
+
+---
+
+## Context
+
+Centralized orchestration creates bottlenecks and single points of failure. In high-scale or highly dynamic systems, agents need to coordinate without depending on a coordinator being alive. Adding new agents should not require modifying a central workflow definition.
 
 ---
 
 ## Problem
 
 Centralized orchestration creates bottlenecks and single points of failure. In high-scale or highly dynamic systems, you need agents to coordinate without depending on a coordinator being alive. Adding new agents should not require modifying a central workflow definition.
+
+---
+
+## Forces
+
+- **F9 Scalability vs. F6 Observability** — this is the core tension: choreography scales horizontally with no coordinator bottleneck (F9), but the global workflow is implicit and hard to trace (F6). This is the exact inverse of Orchestrator.
+- **F2 Coupling** — agents are fully decoupled from each other; they only know the event schema, not each other's addresses.
+- **F8 Determinism** — the emergent flow is harder to predict and test than a defined graph.
 
 ---
 
@@ -41,21 +57,9 @@ Each agent subscribes to events relevant to its role and publishes events when i
 
 ---
 
-## Consequences
+## Sample Code
 
-**Benefits:**
-- ✅ Highly decoupled — agents developed, deployed, and scaled independently
-- ✅ No single point of failure in the coordination layer
-- ✅ Easy to add new agents by subscribing to existing events
-
-**Trade-offs:**
-- ❌ Global workflow is implicit — understanding the full flow requires reading all agents
-- ❌ Debugging failures requires distributed tracing across agents
-- ❌ Compensating for partial failures (saga pattern) is complex without a coordinator
-
----
-
-## Implementation
+Runnable implementation: [samples/python/coordination/choreography.py](../../samples/python/coordination/choreography.py)
 
 ```python
 # Choreography using Redis Streams as the event bus
@@ -96,6 +100,37 @@ async def main():
 
 ---
 
+## Consequences
+
+**Benefits:**
+- ✅ Highly decoupled (F2) — agents developed, deployed, and scaled independently
+- ✅ No single point of failure in the coordination layer (F9)
+- ✅ Easy to add new agents by subscribing to existing events
+
+**Trade-offs:**
+- ❌ Global workflow is implicit (F6) — understanding the full flow requires reading all agents
+- ❌ Debugging failures requires distributed tracing across agents
+- ❌ Compensating for partial failures (saga pattern) is complex without a coordinator (F8)
+
+---
+
+## When to Avoid
+
+- When you need to audit a specific run's execution path — use Orchestrator.
+- When distributed transactions and compensation are needed — use Saga / Compensating Action.
+- When debugging emergent flow has too high an operational cost.
+
+---
+
+## Failure Modes Mitigated
+
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
+- **FM-2.4 Information withholding** ◐ — events are broadcast; all subscribers receive the information.
+
+Note: choreography *introduces* FM-2.3 (task derailment) and FM-1.5 (unclear termination) risks compared to orchestration — factor this into architecture decisions.
+
+---
+
 ## Known Uses
 
 - **Kafka-backed agentic pipelines** — each agent is a consumer group on one topic and a producer on another; no coordinator needed
@@ -106,13 +141,15 @@ async def main():
 
 ## Related Patterns
 
-- [Orchestrator](./orchestrator.md) — centralized alternative; use when the workflow is well-defined and observability is a priority
-- [Broadcast Message](../messaging/broadcast-message.md) — the communication primitive that enables choreography
-- [Dead Letter Agent](../resilience/dead-letter-agent.md) — catch unhandled events in choreography-based systems
+- *alternative-to* [Orchestrator](orchestrator.md) — inverts the F6/F9 trade-off exactly.
+- *used-by* [Dead Letter Agent](../resilience/dead-letter-agent.md) — unhandled events route to the dead letter handler.
+- *complements* [Blackboard](../messaging/blackboard.md) — events trigger agents; blackboard stores accumulated state.
 
 ---
 
 ## References
 
+- Hohpe, G. & Woolf, B. (2003). *Enterprise Integration Patterns* — Event-Driven Consumer.
+- Cemri, M. et al. (2025). arXiv:2503.13657.
 - Richardson, C. (2018). *Microservices Patterns*. Manning. Chapter 4: Managing transactions with sagas.
-- arXiv:2501.06322 — characterizes peer-to-peer (choreography) vs. centralized (orchestration) as a primary structural dimension
+- arXiv:2501.06322 — characterizes peer-to-peer (choreography) vs. centralized (orchestration) as a primary structural dimension.

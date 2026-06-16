@@ -1,21 +1,37 @@
 # Supervised Delegation
+**Category:** Coordination
+**Maturity:** ★★ Established
+**Also known as:** Supervisor-Worker, Manager-Worker, Hierarchical Delegation
 
 > A supervisor agent decomposes a goal into subtasks, delegates each to a specialist agent, monitors execution, and intervenes on failure.
 
-**Category:** coordination
 **EIP Analog:** [Process Manager](https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html)
 
 ---
 
-## Also Known As
+## Intent
 
-Supervisor-Worker, Manager-Agent, Hierarchical Delegation
+Coordinate multiple specialist agents toward a complex goal while maintaining coherence, fault tolerance, and visibility — with a single agent that owns the plan and monitors its execution.
+
+---
+
+## Context
+
+Complex goals exceed any single agent's capacity and benefit from specialization. Subtasks must be distributed across agents while the overall goal remains coherent. Failures in subtasks must be handled, retried, or escalated without losing global state.
 
 ---
 
 ## Problem
 
 Complex goals exceed any single agent's capacity and benefit from specialization. But tasks need to be distributed while the overall goal remains coherent — failures in subtasks must be handled, retried, or escalated without losing the global state.
+
+---
+
+## Forces
+
+- **F4 Answer quality / F6 Observability** — the supervisor monitors outcomes and can retry, escalate, or reassign on failure; the overall goal remains coherent.
+- **F9 Scalability vs. F6** — the supervisor is a bottleneck and single point of coordination; it provides observability at the cost of throughput.
+- **F10 Adaptability** — the supervisor can dynamically re-plan when a worker fails, unlike a fixed Orchestrator.
 
 ---
 
@@ -41,21 +57,9 @@ A supervisor agent owns the high-level goal and maintains a plan. It decomposes 
 
 ---
 
-## Consequences
+## Sample Code
 
-**Benefits:**
-- ✅ Clear accountability — supervisor owns the goal end-to-end
-- ✅ Fault tolerance — supervisor can retry, reassign, or restructure the plan on failure
-- ✅ Workers stay focused on their domain; the supervisor handles coordination complexity
-
-**Trade-offs:**
-- ❌ Supervisor is a single point of failure and bottleneck
-- ❌ Supervisor quality (LLM quality + prompt quality) determines overall system quality
-- ❌ Requires careful prompt design to avoid infinite retry loops
-
----
-
-## Implementation
+Runnable implementation: [samples/python/coordination/supervised_delegation.py](../../samples/python/coordination/supervised_delegation.py)
 
 ```python
 # LangGraph Supervisor pattern
@@ -92,6 +96,35 @@ supervisor = create_supervisor(
 
 ---
 
+## Consequences
+
+**Benefits:**
+- ✅ Clear accountability (F6) — supervisor owns the goal end-to-end
+- ✅ Fault tolerance (F10) — supervisor can retry, reassign, or restructure the plan on failure
+- ✅ Workers stay focused on their domain; the supervisor handles coordination complexity (F4)
+
+**Trade-offs:**
+- ❌ Supervisor is a single point of failure and bottleneck (F9)
+- ❌ Supervisor quality (LLM quality + prompt quality) determines overall system quality (F4)
+- ❌ Requires careful prompt design to avoid infinite retry loops
+
+---
+
+## When to Avoid
+
+- When the plan is fixed and failures are rare — use Orchestrator (simpler, no monitoring loop).
+- When the supervisor becomes a bottleneck — consider Choreography for scale.
+
+---
+
+## Failure Modes Mitigated
+
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
+- **FM-2.2 Fail to ask for clarification** ◐ — the supervisor can detect when a worker is stuck and provide clarification.
+- **FM-3.1 Premature termination** ◐ — the supervisor verifies worker completion before declaring the goal done.
+
+---
+
 ## Known Uses
 
 - **AWS Bedrock Multi-Agent Supervisor** — a dedicated supervisor agent decomposes requests and routes to registered sub-agents, monitoring completion and handling errors
@@ -102,14 +135,17 @@ supervisor = create_supervisor(
 
 ## Related Patterns
 
-- [Orchestrator](./orchestrator.md) — lighter-weight coordination without runtime monitoring; use when the workflow is well-defined and failures are handled by retry policies
-- [Dead Letter Agent](../resilience/dead-letter-agent.md) — the escalation target when the supervisor cannot resolve a failure
-- [Circuit Breaker](../resilience/circuit-breaker.md) — protect the supervisor from repeatedly calling a failing worker
+- *alternative-to* [Orchestrator](orchestrator.md) — adds runtime monitoring; choose when the plan must adapt to failures.
+- *alternative-to* [Magentic Orchestration](magentic.md) — monitored but pre-decomposed; Magentic re-decomposes at runtime.
+- *uses* [Direct Message](../messaging/direct-message.md) — supervisor delegates via direct messages to workers.
+- *uses* [Dead Letter Agent](../resilience/dead-letter-agent.md) — escalation target when a worker fails all retries.
 
 ---
 
 ## References
 
-- Hohpe & Woolf (2003). *Enterprise Integration Patterns*: Process Manager
+- Anthropic (2024). *Building Effective Agents* — Orchestrator-subagents.
+- Cemri, M. et al. (2025). arXiv:2503.13657.
+- Hohpe & Woolf (2003). *Enterprise Integration Patterns*: Process Manager.
 - [LangGraph Supervisor Tutorial](https://langchain-ai.github.io/langgraph/tutorials/multi_agent/agent_supervisor/)
-- arXiv:2501.06322 — classifies hierarchical structures as a primary multi-agent coordination dimension
+- arXiv:2501.06322 — classifies hierarchical structures as a primary multi-agent coordination dimension.

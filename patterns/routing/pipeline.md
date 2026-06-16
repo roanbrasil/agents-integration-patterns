@@ -1,21 +1,38 @@
 # Pipeline
+**Category:** Routing
+**Maturity:** ★★ Established
+**Also known as:** Sequential Chain, Prompt Chaining, Pipes and Filters, Process Chain
 
 > Pass a task through a sequence of agents, where each agent transforms or enriches the result before passing it to the next.
 
-**Category:** routing
 **EIP Analog:** [Pipes and Filters](https://www.enterpriseintegrationpatterns.com/patterns/messaging/PipesAndFilters.html)
 
 ---
 
-## Also Known As
+## Intent
 
-Agent Chain, Prompt Chain, Sequential Workflow
+Chain focused agents as sequential pipeline stages so that complex multi-step transformations are decomposed into independently testable, replaceable steps — each receiving the output of the previous stage as its input.
+
+---
+
+## Context
+
+A complex task requires a series of transformations where each step depends on the previous result. Putting all logic in one agent makes it unfocused and hard to test. Running steps in parallel is incorrect because they have data dependencies.
 
 ---
 
 ## Problem
 
 A complex task requires a series of transformations where each step depends on the previous result: extract, then analyze, then format, then verify. Putting all logic in one agent makes it unfocused and hard to test. Running steps in parallel is incorrect because they have data dependencies.
+
+---
+
+## Forces
+
+- **F8 Determinism** — fixed step order makes the pipeline reproducible and auditable.
+- **F6 Observability** — each step's output is explicit state, inspectable between steps.
+- **F1 Latency** — steps execute sequentially; wall-clock = sum of all steps (unlike Scatter-Gather).
+- **F10 Adaptability** — limited: adding or reordering steps requires modifying the pipeline definition.
 
 ---
 
@@ -42,21 +59,9 @@ Chain agents as pipeline stages. Each agent (filter) has a focused responsibilit
 
 ---
 
-## Consequences
+## Sample Code
 
-**Benefits:**
-- ✅ Each stage is independently testable and replaceable
-- ✅ Easy to insert, remove, or reorder stages
-- ✅ Clear data flow — easy to trace and debug
-
-**Trade-offs:**
-- ❌ Sequential — total latency is the sum of all stage latencies
-- ❌ A failure in an early stage cascades through all downstream stages
-- ❌ Context can be lost between stages if state management is not careful
-
----
-
-## Implementation
+Runnable implementation: [samples/python/routing/pipeline.py](../../samples/python/routing/pipeline.py)
 
 ```python
 # Pipeline using LangGraph as the runner
@@ -103,6 +108,32 @@ graph.add_edge("format", END)
 
 ---
 
+## Consequences
+
+- ✅ Reproducible, auditable execution (F8, F6 resolved)
+- ✅ Each step testable in isolation
+- ✅ Easy to insert, remove, or reorder stages
+- ❌ Sequential — total latency = sum of all steps (F1 introduced)
+- ❌ A single failing step blocks the entire pipeline
+- ❌ Context can be lost between stages if state management is not careful
+
+---
+
+## When to avoid
+
+- When steps can run in parallel — use Scatter-Gather.
+- When the sequence must adapt at runtime — use Orchestrator or Magentic.
+
+---
+
+## Failure Modes Mitigated
+
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
+- **FM-1.3 Step repetition** ◐ — explicit step state makes accidental repetition visible.
+- **FM-1.5 Unaware of termination conditions** ◐ — a fixed pipeline has a defined last step; completion is unambiguous.
+
+---
+
 ## Known Uses
 
 - **Anthropic "Prompt Chaining"** — the canonical agentic workflow where each LLM call feeds the next
@@ -114,13 +145,15 @@ graph.add_edge("format", END)
 
 ## Related Patterns
 
-- [Scatter-Gather](./scatter-gather.md) — use when pipeline stages can run in parallel
-- [Checkpoint & Resume](../resilience/checkpoint-resume.md) — persist state between stages for long pipelines
-- [Orchestrator](../coordination/orchestrator.md) — the pipeline runner is a lightweight orchestrator
+- *is-a* [Orchestrator](../coordination/orchestrator.md) — a linear orchestrator is a pipeline.
+- *alternative-to* [Scatter-Gather](scatter-gather.md) — sequential vs. parallel.
+- *used-by* [Checkpoint & Resume](../resilience/checkpoint-resume.md) — pipeline steps are natural checkpoint boundaries.
 
 ---
 
 ## References
 
-- Hohpe & Woolf (2003). *Enterprise Integration Patterns*: Pipes and Filters
+- Hohpe, G. & Woolf, B. (2003). *Enterprise Integration Patterns* — Pipes and Filters.
+- Anthropic (2024). *Building Effective Agents* — Prompt Chaining.
+- Cemri, M. et al. (2025). arXiv:2503.13657.
 - [Anthropic: Building Effective Agents — Prompt Chaining](https://www.anthropic.com/research/building-effective-agents)
