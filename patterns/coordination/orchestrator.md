@@ -1,124 +1,84 @@
 # Orchestrator
 
-> A central coordinator defines the execution flow, sequences agent calls, and manages state — without monitoring individual agents at runtime.
+**Category:** Coordination
+**Maturity:** ★★ Established
+**Also known as:** Process Manager (EIP), Central Coordinator, Workflow Engine, Conductor
 
-**Category:** coordination
-**EIP Analog:** [Process Manager](https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html) (static variant)
+## Intent
 
----
+A central coordinator defines the execution flow, sequences agent calls, and manages shared state — following a pre-defined plan rather than reacting to runtime monitoring.
 
-## Also Known As
+## Context
 
-Workflow Coordinator, Agent Planner, Central Controller
-
----
+You are building a multi-agent workflow whose steps are known in advance: a defined sequence (or branching graph) of agent invocations where each step consumes the state produced by earlier steps. You need one place that owns the plan and the state.
 
 ## Problem
 
-A workflow requires coordinating multiple agents in a defined sequence, but you need a single place to define the execution plan, manage state, and handle branching logic. Without a coordinator, each agent must know about the overall flow — coupling them to the workflow instead of their domain.
+Multiple agents must be coordinated in a defined order, with state passed between them and branching logic applied — but if every agent knows about every other agent, the workflow logic smears across the whole system and becomes impossible to audit, test, or change.
 
----
+## Forces
+
+- **F6 Observability vs. F9 Scalability** — centralizing the flow makes it inspectable and testable, but the coordinator becomes a throughput bottleneck and a single point of failure.
+- **F8 Determinism vs. F10 Adaptability** — a fixed plan is reproducible and easy to reason about, but less able to adapt to situations the plan's author did not foresee.
+- **F2 Coupling** — agents stay decoupled from *each other* (they only know the orchestrator), but each becomes coupled to the orchestrator's state schema.
+
+The Orchestrator chooses observability and determinism over scalability and adaptability. When those priorities invert, see *Choreography*.
 
 ## Solution
 
-The orchestrator holds the workflow definition as a graph or plan. It calls agents in sequence or in parallel according to the plan, passes state between steps, and handles conditional branching. Unlike the Supervisor, the orchestrator follows a pre-defined plan rather than dynamically monitoring and reacting at runtime.
+The orchestrator holds the workflow graph. It calls agents in sequence or in parallel according to the plan, passes state between steps, and applies branching logic. Unlike a *Supervised Delegation* supervisor, it does not monitor agents and dynamically re-plan — it executes a plan that was fixed at design time.
 
----
+State is centralized and explicit, which is what gives the pattern its auditability: at any step you can serialize and inspect the entire workflow state.
 
-## Diagram
+![Orchestrator](../../img/orchestrator.svg)
 
-![Orchestrator — step1 → step2 → step3 → done, each step delegating to Agent A, B, and C respectively](../../img/orchestrator.png)
+## Sample Code
 
----
+Runnable, tested implementation: [`samples/coordination/orchestrator/`](../../samples/coordination/orchestrator/)
 
-## Participants
-
-| Participant | Role |
-|---|---|
-| **Orchestrator** | Holds the workflow graph; sequences calls; passes state between steps |
-| **Worker Agents** | Execute individual steps; unaware of the overall workflow |
-| **State Store** | Holds workflow state between steps (in-memory, Redis, DB) |
-
----
+```python
+# Excerpt — the orchestrator owns the plan and the state
+graph = Orchestrator(state_schema=ResearchState)
+graph.add_step("search",  search_agent)
+graph.add_step("analyze", analyze_agent)
+graph.add_step("report",  report_agent)
+graph.add_conditional("review", review_agent,
+                      on_reject="report", on_approve=END)
+result = graph.run(initial={"query": "agentic AI frameworks"})
+```
 
 ## Consequences
 
-**Benefits:**
-- ✅ Predictable execution — workflow is explicit and auditable
-- ✅ Centralized state management — no state scattered across agents
-- ✅ Easy to test — workflow and agents are independently testable
+- ✅ Predictable execution; trivial to audit and unit-test each step in isolation (resolves F6, F8).
+- ✅ Centralized state management — one schema, one place to inspect (resolves F6).
+- ❌ The orchestrator must be updated whenever the workflow changes (introduces F10 cost).
+- ❌ Becomes a bottleneck and single point of failure under load (introduces F9 cost).
 
-**Trade-offs:**
-- ❌ Orchestrator becomes a maintenance point when workflows change
-- ❌ Less adaptive than Choreography for dynamic or unpredictable scenarios
-- ❌ Orchestrator state is a single point of failure unless externalized
+## Failure Modes Mitigated
 
----
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
 
-## Implementation
-
-```python
-# LangGraph StateGraph as orchestrator
-from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.sqlite import SqliteSaver
-from typing import TypedDict
-
-class WorkflowState(TypedDict):
-    input: str
-    plan: list[str]
-    results: list[str]
-    final: str
-
-def planner(state: WorkflowState) -> WorkflowState:
-    return {"plan": ["research", "draft", "review"]}
-
-def researcher(state: WorkflowState) -> WorkflowState:
-    return {"results": [f"research result for: {state['input']}"]}
-
-def drafter(state: WorkflowState) -> WorkflowState:
-    return {"results": state["results"] + ["draft based on research"]}
-
-def reviewer(state: WorkflowState) -> WorkflowState:
-    return {"final": f"Reviewed: {state['results'][-1]}"}
-
-# The StateGraph IS the orchestrator
-graph = StateGraph(WorkflowState)
-graph.add_node("plan", planner)
-graph.add_node("research", researcher)
-graph.add_node("draft", drafter)
-graph.add_node("review", reviewer)
-
-graph.set_entry_point("plan")
-graph.add_edge("plan", "research")
-graph.add_edge("research", "draft")
-graph.add_edge("draft", "review")
-graph.add_edge("review", END)
-
-# Checkpointer externalizes state (makes orchestrator fault-tolerant)
-memory = SqliteSaver.from_conn_string(":memory:")
-app = graph.compile(checkpointer=memory)
-```
-
----
+- **FM-1.5 Unaware of termination conditions** ✅ — the plan defines explicit end states, so the system always knows when it is done.
+- **FM-3.1 Premature termination** ✅ — steps cannot be skipped; the graph enforces completion before `END`.
+- **FM-2.3 Task derailment** ✅ — agents cannot wander off-plan because they do not control the flow.
+- **FM-1.3 Step repetition** ◐ — explicit state makes accidental repetition visible and preventable.
 
 ## Known Uses
 
-- **LangGraph StateGraph** — the primary abstraction; the graph definition is the orchestrator
-- **Azure Semantic Kernel Planners** — Stepwise and Handlebars planners generate and execute multi-step agent plans
-- **Anthropic's "Orchestrator-Subagents" pattern** — documented in Building Effective Agents; one agent generates a plan, subagents execute each step
-
----
+- LangGraph `StateGraph` — the canonical implementation.
+- Azure Semantic Kernel planners.
+- Anthropic's "orchestrator–subagents" workflow (*Building Effective Agents*, 2024).
+- AWS Step Functions used as an agent workflow engine.
 
 ## Related Patterns
 
-- [Supervised Delegation](./supervised-delegation.md) — adds runtime monitoring and dynamic replanning on top of orchestration
-- [Choreography](./choreography.md) — decentralized alternative; no coordinator needed
-- [Checkpoint & Resume](../resilience/checkpoint-resume.md) — externalize orchestrator state to survive failures
-
----
+- *alternative-to* **[Choreography](choreography.md)** — decentralized, event-driven; inverts the F6/F9 trade-off.
+- *alternative-to* **[Supervised Delegation](supervised-delegation.md)** — adds a runtime monitoring loop; choose it when the plan must adapt to failures.
+- *uses* **[Pipeline](../routing/pipeline.md)** — a linear orchestrator is a pipeline.
+- *used-by* **[Checkpoint & Resume](../resilience/checkpoint-resume.md)** — centralized state is what makes checkpointing natural.
 
 ## References
 
-- [Anthropic: Orchestrator-Subagents Pattern](https://www.anthropic.com/research/building-effective-agents)
-- [LangGraph: How it Works](https://langchain-ai.github.io/langgraph/concepts/low_level/)
-- arXiv:2508.01186 — surveys orchestration flows as a primary axis for classifying agent workflow systems
+- Hohpe, G. & Woolf, B. (2003). *Enterprise Integration Patterns* — Process Manager.
+- Anthropic (2024). *Building Effective Agents.*
+- Cemri, M. et al. (2025). *Why Do Multi-Agent LLM Systems Fail?* arXiv:2503.13657.

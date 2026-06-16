@@ -1,123 +1,80 @@
 # Trust Boundary
 
-> Explicitly define which agents trust which other agents, and at what level, preventing unauthorized task delegation or data access.
+**Category:** Security
+**Maturity:** ★ Emerging
+**Also known as:** Trust Zone, Security Perimeter, Trust Tier
 
-**Category:** security
-**EIP Analog:** No direct EIP analog — applies network security zone concepts to agent-to-agent communication
+## Intent
 
----
+Explicitly define which agents trust which other agents, and at what level, preventing unauthorized task delegation, impersonation, or data access across a multi-agent system.
 
-## Also Known As
+## Context
 
-Trust Zone, Security Perimeter, Agent Trust Model
-
----
+You operate a multi-agent system where agents communicate over A2A (or any agent-to-agent channel), and at least some agents are reachable from outside a trusted core — exposed to external callers, untrusted content, or third-party agents.
 
 ## Problem
 
-In a multi-agent system using A2A, an attacker or compromised agent may attempt to: impersonate a trusted agent, inject malicious tasks through agent-to-agent channels, or escalate privileges by claiming higher trust than warranted. Without explicit trust levels, any agent that can reach another agent's endpoint can send it tasks.
+In an open agent network, a compromised or malicious actor can impersonate a trusted agent, inject malicious tasks through agent-to-agent channels, or escalate from a low-trust edge into the high-trust core. Without explicit trust levels, every agent implicitly trusts every caller — so one compromised agent compromises the whole mesh.
 
----
+## Forces
+
+- **F7 Trust asymmetry** — external callers and internal agents cannot be treated identically, but the more boundaries you enforce, the more authentication overhead every interaction carries.
+- **F5 Blast radius** — tiering trust contains lateral movement on compromise, but...
+- **F1 Latency / F11 Operational complexity** — every boundary crossing adds an auth check, key management, and a place for legitimate collaboration to be wrongly blocked.
+
+Trust Boundary spends latency and operational complexity to buy containment (F5) under trust asymmetry (F7).
 
 ## Solution
 
-Define trust tiers explicitly. Agents verify the identity and trust level of callers via Agent Card authentication (OAuth/bearer tokens, mTLS) before accepting tasks. Assign agents to trust zones — external-facing agents are in a lower trust zone and interact with higher trust zones only through a gateway. Internal agents in the same zone can call each other directly.
+Define trust tiers explicitly — typically **Untrusted** (external), **Gateway** (authenticated boundary), and **Internal** (core agents, full trust). Agents verify the identity of callers via Agent Card authentication (OAuth / bearer tokens) before accepting tasks. Capabilities available to a caller are a function of its tier: a Gateway-tier caller gets a sanitized, capability-restricted view; only Internal-tier callers reach sensitive operations.
 
----
+This is defense in depth: the perimeter is not the only control — internal tiers limit how far a breach can spread.
 
-## Diagram
+![Trust Boundary](../../img/trust-boundary.svg)
 
-![Trust Boundary — External requests enter Untrusted Zone, pass through Gateway Zone (authenticated A2A via Gateway Agent), and reach the Trusted Zone where Core Agent A and Core Agent B communicate](../../img/trust-boundary.png)
+## Sample Code
 
----
+Runnable, tested implementation: [`samples/security/trust_boundary/`](../../samples/security/trust_boundary/)
 
-## Participants
-
-| Participant | Role |
-|---|---|
-| **Gateway Agent** | Authenticates external agents; translates and forwards to internal agents |
-| **Internal Agents** | Trust each other within their zone; verify gateway identity at zone entry |
-| **Identity Provider** | Issues and validates tokens for Agent Card authentication (OAuth, mTLS CA) |
-
----
+```python
+# Excerpt — tier determines what a caller may do
+tier = classify_caller(token)          # UNTRUSTED | GATEWAY | INTERNAL
+if tier is TrustTier.UNTRUSTED:
+    raise Rejected("untrusted caller")
+task = sanitize_for_tier(task, tier)   # Gateway gets a restricted view
+return process(task, tier=tier)
+```
 
 ## Consequences
 
-**Benefits:**
-- ✅ Defense in depth — perimeter + internal zone separation
-- ✅ Limits lateral movement — a compromised external agent cannot directly call internal agents
-- ✅ Auditable trust decisions — every cross-boundary call requires explicit authentication
+- ✅ Defense in depth — perimeter plus internal trust levels (resolves F5, F7).
+- ✅ Limits lateral movement: a breached edge agent cannot act as a core agent.
+- ❌ Trust decisions must be maintained as the system evolves; stale tiers are a liability.
+- ❌ Overly strict internal tiers slow legitimate agent collaboration (introduces F1, F11).
 
-**Trade-offs:**
-- ❌ Trust boundaries must be updated as the agent topology evolves
-- ❌ Overly strict internal boundaries slow down legitimate agent collaboration
-- ❌ Gateway becomes a bottleneck and must be highly available
+## Failure Modes Mitigated
 
----
+Per [FAILURE-MAP.md](../FAILURE-MAP.md):
 
-## Implementation
+- **FM-2.3 Task derailment** ◐ — injected malicious tasks from untrusted callers are rejected at the boundary before they can derail the workflow.
+- **FM-3.3 Incorrect verification** ◐ — prevents a compromised agent from impersonating a trusted verifier.
 
-```python
-# A2A gateway agent that verifies trust before forwarding
-from fastapi import FastAPI, Header, HTTPException
-from a2a.types import SendTaskRequest
-from a2a.client import A2AClient
-import jwt  # PyJWT
-
-app = FastAPI()
-
-TRUSTED_ISSUER = "https://auth.example.com"
-INTERNAL_AGENT_URL = "https://internal-agents.example.com/core"
-
-def verify_agent_token(token: str) -> dict:
-    """Verify the calling agent's JWT issued by our identity provider."""
-    try:
-        return jwt.decode(
-            token,
-            options={"verify_signature": True},
-            algorithms=["RS256"],
-            issuer=TRUSTED_ISSUER,
-        )
-    except jwt.InvalidTokenError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid agent token: {e}")
-
-@app.post("/tasks/send")
-async def gateway_forward(
-    request: SendTaskRequest,
-    authorization: str = Header(...),
-):
-    token = authorization.removeprefix("Bearer ")
-    claims = verify_agent_token(token)
-
-    # Only forward if caller has the required trust scope
-    if "agent:delegate" not in claims.get("scopes", []):
-        raise HTTPException(status_code=403, detail="Insufficient trust scope")
-
-    # Forward to internal agent (internal zone — no re-auth needed)
-    internal_client = A2AClient(url=INTERNAL_AGENT_URL)
-    return await internal_client.send_task(request)
-```
-
----
+Beyond MAST, this pattern is the primary defense against **Agent-in-the-Middle (AiTM)** attacks and **A2A/MCP protocol confusion and downgrade** attacks, which arise specifically because the two protocols operate under different trust assumptions.
 
 ## Known Uses
 
-- **A2A authentication via Agent Cards** — the A2A spec defines `authentication.schemes` in Agent Cards; gateway agents validate these before forwarding
-- **Enterprise agent mesh deployments** — large-scale deployments (Salesforce Agentforce, ServiceNow) implement trust zones between external customer-facing agents and internal system agents
-- **Zero-trust agent networks** — applying zero-trust principles: every agent-to-agent call requires authentication regardless of network location
-
----
+- A2A authentication via Agent Cards (bearer/OAuth schemes in the Agent Card `authentication` block).
+- Enterprise agent-mesh security architectures.
+- Gateway/zone segmentation in production agent deployments.
 
 ## Related Patterns
 
-- [Agent Proxy](../discovery/agent-proxy.md) — the gateway agent is typically implemented as an Agent Proxy
-- [Least-Privilege Tool Scope](./least-privilege-tool-scope.md) — trust zones define which tools are accessible; scope enforcement is complementary
-- [Prompt Firewall](./prompt-firewall.md) — apply prompt injection defense at the gateway before forwarding to internal agents
-
----
+- *uses* **[Agent Proxy](../discovery/agent-proxy.md)** — the gateway tier is often implemented as a proxy.
+- *complements* **[Least-Privilege Tool Scope](least-privilege-tool-scope.md)** — Trust Boundary controls *who* can call; Least-Privilege controls *what* they can do once trusted.
+- *complements* **[Prompt Firewall](prompt-firewall.md)** — boundary authenticates callers; firewall sanitizes the content they send.
 
 ## References
 
-- [A2A Security Considerations](https://a2a-protocol.org/specification/latest/Agent-to-Agent%20Protocol%20Specification#security-considerations)
-- arXiv:2505.03864 — analyzes trust model differences between A2A and MCP and resulting security risks
-- arXiv:2602.11327 — threat modeling for AI agent protocols; classifies confusion, downgrade, and relay-abuse attacks
+- *From Glue-Code to Protocols: A Critical Analysis of A2A and MCP Security.* arXiv:2505.03864.
+- *A Survey of Agent Interoperability Protocols (MCP, ACP, A2A, ANP).* arXiv:2505.02279.
+- Lee, D. & Tiwari, M. (2024). *Prompt Infection.* arXiv:2410.07283.

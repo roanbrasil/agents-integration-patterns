@@ -78,3 +78,90 @@ def test_discover_agent_finds_pdf_agent():
 def test_discover_agent_returns_none_for_unknown():
     from coordination.peer_to_peer_delegation import discover_agent
     assert discover_agent("unknown_capability_xyz") is None
+
+
+# ── group_chat ─────────────────────────────────────────────
+def test_group_chat_thread_starts_with_input():
+    from coordination.group_chat import GroupChat, maker_checker_manager
+    chat = (
+        GroupChat(manager=maker_checker_manager(), max_turns=6)
+        .add("maker", lambda thread: "draft v1")
+        .add("checker", lambda thread: "APPROVED: looks good")
+    )
+    thread = chat.run("write a refund policy")
+    assert thread[0] == ("input", "write a refund policy")
+
+
+def test_group_chat_maker_checker_stops_on_approval():
+    from coordination.group_chat import GroupChat, maker_checker_manager
+    chat = (
+        GroupChat(manager=maker_checker_manager(), max_turns=10)
+        .add("maker", lambda thread: "draft v1")
+        .add("checker", lambda thread: "APPROVED: done")
+    )
+    thread = chat.run("task")
+    assert thread[-1][0] == "checker"
+    assert "APPROVED" in thread[-1][1]
+
+
+def test_group_chat_iteration_cap_bounds_loop():
+    from coordination.group_chat import GroupChat, maker_checker_manager
+    chat = (
+        GroupChat(manager=maker_checker_manager(), max_turns=4)
+        .add("maker", lambda thread: "draft")
+        .add("checker", lambda thread: "REJECTED: not good enough")
+    )
+    thread = chat.run("x")
+    assert len(thread) == 1 + 4  # input + max_turns
+
+
+# ── magentic ───────────────────────────────────────────────
+def test_magentic_clean_completion():
+    from coordination.magentic import MagenticManager, TaskLedger
+
+    def planner(ledger: TaskLedger) -> list[str]:
+        done = {s for s, _ in ledger.done}
+        if "researcher: market" not in done:
+            return ["researcher: market"]
+        if "writer: analysis" not in done:
+            return ["writer: analysis"]
+        return []
+
+    mgr = (
+        MagenticManager(planner=planner, max_rounds=8, stall_limit=2)
+        .register("researcher", lambda t: f"found info on {t}")
+        .register("writer", lambda t: f"wrote section: {t}")
+    )
+    ledger = mgr.run("competitive analysis")
+    assert len(ledger.done) == 2
+    assert ledger.open_questions == []
+
+
+def test_magentic_stall_detection():
+    from coordination.magentic import MagenticManager, TaskLedger
+
+    mgr = MagenticManager(
+        planner=lambda l: ["ghost: do something"],
+        max_rounds=10,
+        stall_limit=2,
+    )
+    ledger = mgr.run("impossible")
+    assert any("stalled" in q for q in ledger.open_questions)
+    assert len(ledger.done) == 0
+
+
+def test_magentic_round_cap():
+    from coordination.magentic import MagenticManager, TaskLedger
+    calls = {"n": 0}
+
+    def worker(t: str) -> str:
+        calls["n"] += 1
+        return "ok"
+
+    mgr = (
+        MagenticManager(planner=lambda l: ["worker: step"], max_rounds=3, stall_limit=99)
+        .register("worker", worker)
+    )
+    ledger = mgr.run("endless")
+    assert calls["n"] == 3
+    assert any("round cap" in q for q in ledger.open_questions)

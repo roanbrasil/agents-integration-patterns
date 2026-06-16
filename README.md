@@ -414,7 +414,7 @@ See full pattern: [patterns/coordination/orchestrator.md](patterns/coordination/
 
 **Known Uses:** Kafka-based agent pipelines, CrewAI event-driven process, agent-based saga patterns.
 
-**Related Patterns:** [Orchestrator](#12-orchestrator) (centralized alternative), [Dead Letter Agent](#15-dead-letter-agent) (for unhandled events).
+**Related Patterns:** [Orchestrator](#12-orchestrator) (centralized alternative), [Dead Letter Agent](#17-dead-letter-agent) (for unhandled events).
 
 See full pattern: [patterns/coordination/choreography.md](patterns/coordination/choreography.md)
 
@@ -444,13 +444,65 @@ See full pattern: [patterns/coordination/peer-to-peer-delegation.md](patterns/co
 
 ---
 
+#### 15. Group Chat
+
+**Intent:** Let multiple agents solve a problem or validate work by participating in a shared conversation thread, coordinated by a chat manager that decides who speaks next.
+
+**Problem:** Some decisions require agents to react to each other, challenge claims, and converge. A fixed pipeline cannot capture this cross-talk, and parallel scatter-gather discards the back-and-forth that produces the insight.
+
+**Solution:** A **chat manager** coordinates an accumulating conversation thread, deciding which agent responds next. The **Maker-Checker loop** is the canonical specialization: a maker proposes, a checker evaluates against acceptance criteria and either approves or returns specific feedback — the loop repeats under an iteration cap to prevent runaway threads.
+
+![Group Chat — chat manager drives a maker-checker loop between Maker and Checker agents](img/group-chat.png)
+
+**Consequences:**
+- ✅ Captures cross-agent reasoning that pipelines and scatter-gather miss
+- ✅ Single accumulating thread is transparent and auditable; ideal for human-in-the-loop
+- ❌ Token cost and latency grow with turns × participants
+- ❌ Flow control degrades past ~3 agents; requires iteration caps
+
+**When to avoid:** Real-time latency budgets, when a simpler pipeline already suffices, or when the chat manager has no objective way to decide the task is complete.
+
+**Known Uses:** Microsoft Agent Framework Group Chat / Maker-Checker, AutoGen GroupChatManager, Google DeepMind multi-agent debate.
+
+**Related Patterns:** [Scatter-Gather](#9-scatter-gather) (parallel, no cross-talk), [Ensemble Judge](#24-ensemble-judge) (when discussion reduces to independent verdicts).
+
+See full pattern: [patterns/coordination/group-chat.md](patterns/coordination/group-chat.md)
+
+---
+
+#### 16. Magentic Orchestration
+
+**Intent:** Solve open-ended problems with no predetermined plan by having a manager agent build and continuously refine a **task ledger** in collaboration with specialized agents, adapting the plan as the context evolves.
+
+**Problem:** A pre-defined plan (Orchestrator) cannot express a workflow whose very structure is unknown until work begins. Pure event-driven coordination gives no global view to reason about progress.
+
+**Solution:** A **manager agent** maintains a *task ledger* — a living document of facts gathered, the current plan, completed steps, and open questions. It assigns tasks to specialists, incorporates their results, and **re-plans** each round. An iteration/stall limit prevents unbounded looping.
+
+![Magentic — manager maintains task ledger, re-plans each round, dispatches to registered specialists](img/magentic.png)
+
+**Consequences:**
+- ✅ Handles open-ended goals with no upfront plan — the only pattern that does
+- ✅ The task ledger keeps an emergent process inspectable
+- ❌ Non-deterministic: different runs may diverge; hard to test and reproduce
+- ❌ Highest operational complexity; demands strict stall/iteration limits
+
+**When to avoid:** When the workflow can be specified in advance (use Orchestrator), regulated domains requiring reproducible runs, or when the problem decomposes into a known set of specialists.
+
+**Known Uses:** Microsoft Magentic-One / Agent Framework, AutoGen Magentic orchestration.
+
+**Related Patterns:** [Orchestrator](#12-orchestrator) (fixed plan; use it whenever the plan is knowable), [Supervised Delegation](#11-supervised-delegation) (monitored but pre-decomposed).
+
+See full pattern: [patterns/coordination/magentic.md](patterns/coordination/magentic.md)
+
+---
+
 ### 🛡️ Resilience Patterns
 
 How agent systems fail gracefully and recover.
 
 ---
 
-#### 15. Dead Letter Agent
+#### 17. Dead Letter Agent
 
 **Intent:** Route tasks that cannot be processed (failed, unroutable, or timed out) to a dedicated agent or human for inspection and resolution.
 
@@ -474,7 +526,7 @@ See full pattern: [patterns/resilience/dead-letter-agent.md](patterns/resilience
 
 ---
 
-#### 16. Circuit Breaker
+#### 18. Circuit Breaker
 
 **Intent:** Stop making calls to a failing agent or tool, allow recovery time, and automatically resume when it becomes healthy.
 
@@ -492,13 +544,13 @@ See full pattern: [patterns/resilience/dead-letter-agent.md](patterns/resilience
 
 **Known Uses:** Spring AI resilience patterns, LangChain RetryWithError, Temporal workflow retry policies.
 
-**Related Patterns:** [Agent Proxy](#5-agent-proxy) (circuit breaker is often implemented in the proxy), [Dead Letter Agent](#15-dead-letter-agent) (route failures).
+**Related Patterns:** [Agent Proxy](#5-agent-proxy) (circuit breaker is often implemented in the proxy), [Dead Letter Agent](#17-dead-letter-agent) (route failures).
 
 See full pattern: [patterns/resilience/circuit-breaker.md](patterns/resilience/circuit-breaker.md)
 
 ---
 
-#### 17. Checkpoint & Resume
+#### 19. Checkpoint & Resume
 
 **Intent:** Persist intermediate agent state so that long-running tasks can be paused and resumed without restarting from scratch.
 
@@ -516,7 +568,7 @@ See full pattern: [patterns/resilience/circuit-breaker.md](patterns/resilience/c
 
 **Known Uses:** LangGraph memory/persistence (SQLite/Postgres checkpointers), AWS Step Functions for agent workflows, 12-factor-agents principle "Own your control flow."
 
-**Related Patterns:** [Idempotent Agent](#idempotent-agent), [Dead Letter Agent](#15-dead-letter-agent).
+**Related Patterns:** [Idempotent Agent](#idempotent-agent), [Dead Letter Agent](#17-dead-letter-agent).
 
 See full pattern: [patterns/resilience/checkpoint-resume.md](patterns/resilience/checkpoint-resume.md)
 
@@ -528,7 +580,7 @@ How to establish trust, limit blast radius, and detect attacks in agent networks
 
 ---
 
-#### 18. Least-Privilege Tool Scope
+#### 20. Least-Privilege Tool Scope
 
 **Intent:** Grant each agent access only to the minimum set of tools and resources it needs to complete its task.
 
@@ -552,7 +604,7 @@ See full pattern: [patterns/security/least-privilege-tool-scope.md](patterns/sec
 
 ---
 
-#### 19. Trust Boundary
+#### 21. Trust Boundary
 
 **Intent:** Explicitly define which agents trust which other agents, and at what level, preventing unauthorized task delegation or data access.
 
@@ -576,7 +628,7 @@ See full pattern: [patterns/security/trust-boundary.md](patterns/security/trust-
 
 ---
 
-#### 20. Prompt Firewall
+#### 22. Prompt Firewall
 
 **Intent:** Inspect and sanitize content flowing into agent context to prevent prompt injection attacks from external data sources.
 
@@ -606,7 +658,7 @@ How agents assess output quality and enforce automated quality gates.
 
 ---
 
-#### 21. LLM-as-Judge
+#### 23. LLM-as-Judge
 
 **Intent:** Route an agent's output through a dedicated judge agent that evaluates quality and decides whether to approve, reject, or escalate.
 
@@ -624,13 +676,13 @@ How agents assess output quality and enforce automated quality gates.
 
 **Known Uses:** LangSmith evaluators, Anthropic agent cookbook, OpenAI Evals framework.
 
-**Related Patterns:** [Ensemble Judge](#22-ensemble-judge) (more reliable multi-judge variant), [Dead Letter Agent](#15-dead-letter-agent) (escalation target for rejections).
+**Related Patterns:** [Ensemble Judge](#24-ensemble-judge) (more reliable multi-judge variant), [Dead Letter Agent](#17-dead-letter-agent) (escalation target for rejections).
 
 See full pattern: [patterns/evaluation/llm-as-judge.md](patterns/evaluation/llm-as-judge.md)
 
 ---
 
-#### 22. Ensemble Judge
+#### 24. Ensemble Judge
 
 **Intent:** Send an agent's output to multiple independent judge agents simultaneously and determine the final verdict by majority vote.
 
@@ -705,16 +757,28 @@ The closest existing work:
 
 ## Code Samples
 
-Runnable implementations of all 22 patterns across multiple languages and frameworks:
+Runnable implementations of all 24 patterns across multiple languages and frameworks:
 
 | Language | Framework | Status |
 |---|---|---|
-| Python | LangChain / LangGraph | ✅ 22 samples |
+| Python | LangChain / LangGraph | ✅ 24 samples + 70 tests |
 | Java | Spring AI 1.0.0 | ✅ 22 samples + 32 tests |
 | TypeScript | LangChain.js / LangGraph.js | ✅ 22 samples |
-| C# | Microsoft Semantic Kernel | ✅ 22 samples + tests |
+| C# | Microsoft Semantic Kernel | ✅ 22 samples + 34 tests |
 
 See [`samples/`](samples/) for setup instructions and all source code.
+
+---
+
+## Catalog Reference Documents
+
+| Document | Description |
+|---|---|
+| [`patterns/FORCES.md`](patterns/FORCES.md) | Shared vocabulary of 11 design tensions (F1–F11) referenced by all patterns |
+| [`patterns/FAILURE-MAP.md`](patterns/FAILURE-MAP.md) | 14 MAST failure modes mapped to mitigating patterns — the catalog's empirical differentiator |
+| [`COMPARISON.md`](COMPARISON.md) | How this catalog relates to Microsoft, Anthropic, LangChain, EIP, and academic surveys |
+| [`ROADMAP.md`](ROADMAP.md) | Engineering roadmap: Forces, MAST grounding, CI gates, site |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Pattern template requirements and contribution guidelines |
 
 ---
 
