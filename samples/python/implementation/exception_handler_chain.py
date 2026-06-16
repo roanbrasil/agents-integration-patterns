@@ -6,7 +6,7 @@ policy violations). The chain is traversed in order; first match wins.
 Based on SHIELDA: arXiv:2508.07935.
 
 Run: python3 resilience/exception_handler_chain.py
-See: patterns/resilience/exception-handler-chain.md
+See: patterns/implementation/exception-handler-chain.md
 """
 
 from __future__ import annotations

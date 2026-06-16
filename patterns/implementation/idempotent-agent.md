@@ -1,5 +1,5 @@
 # Idempotent Agent
-**Category:** Resilience
+**Category:** Implementation
 **Maturity:** ★ Emerging
 **Also known as:** At-Most-Once Execution, Deduplication Guard, Operation Idempotency
 
@@ -7,7 +7,7 @@
 Ensure that every agent action can be retried without causing duplicate side effects, by keying each operation on a stable identifier and skipping already-completed steps.
 
 ## Context
-You have a multi-step agentic workflow where individual steps may fail and be retried — due to rate limits, transient errors, infrastructure restarts, or [Checkpoint & Resume](checkpoint-resume.md) re-execution. Some steps have side effects: writing to a database, sending a message, calling an external API, charging a payment.
+You have a multi-step agentic workflow where individual steps may fail and be retried — due to rate limits, transient errors, infrastructure restarts, or [Checkpoint & Resume](../resilience/checkpoint-resume.md) re-execution. Some steps have side effects: writing to a database, sending a message, calling an external API, charging a payment.
 
 ## Problem
 When an agent retries a failed step, it cannot always tell whether the previous attempt succeeded before the connection dropped. Re-executing a non-idempotent action (create order, send email, charge card) causes duplicates. Without idempotency, retries are unsafe, so either developers avoid retries (risking incomplete workflows) or they accept duplicates (corrupting data).
@@ -32,7 +32,7 @@ IdempotencyGuard
 ```
 
 ## Sample Code
-Runnable implementation: [samples/python/resilience/idempotent_agent.py](../../samples/python/resilience/idempotent_agent.py)
+Runnable implementation: [samples/python/implementation/idempotent_agent.py](../../samples/python/implementation/idempotent_agent.py)
 
 ```python
 guard = IdempotencyGuard()
@@ -45,7 +45,7 @@ def send_email(recipient: str, body: str) -> str:
 
 ## Consequences
 - ✅ Retries are safe — no duplicate side effects (F4 and F8 reconciled)
-- ✅ Compatible with [Checkpoint & Resume](checkpoint-resume.md) — resume re-runs steps idempotently
+- ✅ Compatible with [Checkpoint & Resume](../resilience/checkpoint-resume.md) — resume re-runs steps idempotently
 - ❌ Requires a durable idempotency store for cross-restart safety (F11 introduced)
 - ❌ Does not help with LLM inference steps — only with side-effecting tool calls
 - ❌ Idempotency keys must be carefully designed; wrong keys cause either missed dedup or incorrect cache hits
@@ -66,9 +66,9 @@ Per [FAILURE-MAP.md](../FAILURE-MAP.md):
 - **Stripe API** — idempotency keys on payment endpoints are the canonical industry example; the same pattern applies to agent tool calls.
 
 ## Related Patterns
-- *complements* [Checkpoint & Resume](checkpoint-resume.md) — Checkpoint persists step state; Idempotent Agent makes re-execution of those steps safe.
+- *complements* [Checkpoint & Resume](../resilience/checkpoint-resume.md) — Checkpoint persists step state; Idempotent Agent makes re-execution of those steps safe.
 - *used-by* [Saga / Compensating Action](../coordination/saga.md) — saga steps must be idempotent so that compensation can safely run after a partial failure.
-- *complements* [Dead Letter Agent](dead-letter-agent.md) — tasks that exhaust retries (even idempotent ones) route to the dead letter handler.
+- *complements* [Dead Letter Agent](../resilience/dead-letter-agent.md) — tasks that exhaust retries (even idempotent ones) route to the dead letter handler.
 
 ## References
 - HumanLayer (2025). *12-Factor Agents* — "own your control flow." https://github.com/humanlayer/12-factor-agents

@@ -1,5 +1,5 @@
 # Exception Handler Chain
-**Category:** Resilience
+**Category:** Implementation
 **Maturity:** ★ Emerging
 **Also known as:** Structured Exception Handling, Error Handler Chain, SHIELDA Handler, Fault Escalation Chain
 
@@ -42,7 +42,7 @@ Agent raises Exception
 ```
 
 ## Sample Code
-Runnable implementation: [samples/python/resilience/exception_handler_chain.py](../../samples/python/resilience/exception_handler_chain.py)
+Runnable implementation: [samples/python/implementation/exception_handler_chain.py](../../samples/python/implementation/exception_handler_chain.py)
 
 ```python
 chain = (
@@ -78,8 +78,8 @@ Per [FAILURE-MAP.md](../FAILURE-MAP.md):
 - **CrewAI** — task error handling with max retries and fallback agents.
 
 ## Related Patterns
-- *complements* [Dead Letter Agent](dead-letter-agent.md) — EscalateHandler routes to a human or dead letter when the chain is exhausted.
-- *complements* [Circuit Breaker](circuit-breaker.md) — circuit breaker prevents calls to a failing agent; EHC handles failures that get through.
+- *complements* [Dead Letter Agent](../resilience/dead-letter-agent.md) — EscalateHandler routes to a human or dead letter when the chain is exhausted.
+- *complements* [Circuit Breaker](../resilience/circuit-breaker.md) — circuit breaker prevents calls to a failing agent; EHC handles failures that get through.
 - *used-by* [Magentic Orchestration](../coordination/magentic.md) — stall detection is a lightweight EHC (escalate after stall_limit consecutive non-progress rounds).
 
 ## References

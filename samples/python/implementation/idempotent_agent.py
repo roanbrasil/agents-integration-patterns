@@ -4,7 +4,7 @@ Assigns a stable idempotency key to each operation; skips re-execution if the
 key was already recorded. Safe to combine with Checkpoint & Resume.
 
 Run: python3 resilience/idempotent_agent.py
-See: patterns/resilience/idempotent-agent.md
+See: patterns/implementation/idempotent-agent.md
 """
 
 from __future__ import annotations

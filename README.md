@@ -706,6 +706,58 @@ See full pattern: [patterns/evaluation/ensemble-judge.md](patterns/evaluation/en
 
 ---
 
+---
+
+### 🔧 Implementation Patterns
+
+These patterns address how individual agents are built to be robust — not how agents integrate with each other. They are prerequisites for reliable integration, not integration patterns themselves.
+
+---
+
+#### 25. Idempotent Agent
+
+**Intent:** Ensure every agent action can be safely retried without causing duplicate side effects, by keying each operation on a stable identifier and skipping already-completed steps.
+
+**Problem:** When a multi-step workflow retries a failed step, the agent cannot always know whether the previous attempt succeeded before the connection dropped. Re-executing a non-idempotent action (send email, charge payment, write record) causes duplicates and corrupts state.
+
+**Solution:** Assign a stable idempotency key to each operation (hash of step name + run ID + inputs). Before executing, check the idempotency store; if the key exists, return the cached result. Otherwise execute, record the key and result, and return.
+
+**Consequences:**
+- ✅ Retries are safe — no duplicate side effects
+- ✅ Composes cleanly with Checkpoint & Resume
+- ❌ Requires a durable idempotency store across restarts
+- ❌ Does not help with LLM inference steps — only side-effecting tool calls
+
+**Known Uses:** LangGraph checkpoint resume, Temporal activity idempotency, Stripe idempotency keys, 12-Factor Agents ("own your control flow").
+
+**Related Patterns:** [Checkpoint & Resume](#19-checkpoint--resume) (persists state; Idempotent Agent makes re-execution safe), [Saga / Compensating Action](#saga--compensating-action) (saga steps must be idempotent).
+
+See full pattern: [patterns/implementation/idempotent-agent.md](patterns/implementation/idempotent-agent.md)
+
+---
+
+#### 26. Exception Handler Chain
+
+**Intent:** Give each category of agent failure its own structured handler — retry, fallback, human escalation — arranged as a chain of responsibility so that unhandled exceptions propagate to progressively higher-severity handlers.
+
+**Problem:** A single try/except block at the workflow level loses the structure needed to recover correctly: a transient rate-limit error warrants a brief retry; a malformed LLM output warrants a prompt correction; a policy violation warrants immediate human escalation. Treating all exceptions the same wastes recovery opportunities.
+
+**Solution:** Define a chain of typed ExceptionHandler objects (RetryHandler, FallbackHandler, EscalateHandler). When an agent action raises an exception, the chain is traversed in order; the first matching handler executes its recovery logic. Based on SHIELDA (arXiv:2508.07935).
+
+**Consequences:**
+- ✅ Each failure mode has a targeted, recoverable response
+- ✅ Typed handler events are loggable and analyzable
+- ❌ More code than a single catch block
+- ❌ Handler ordering matters; wrong order can shadow exceptions
+
+**Known Uses:** SHIELDA arXiv:2508.07935, LangChain `RunnableWithFallbacks`, AutoGen human-in-the-loop escalation, CrewAI task retry.
+
+**Related Patterns:** [Dead Letter Agent](#17-dead-letter-agent) (EscalateHandler's ultimate target), [Circuit Breaker](#18-circuit-breaker) (prevents calls; EHC handles failures that get through).
+
+See full pattern: [patterns/implementation/exception-handler-chain.md](patterns/implementation/exception-handler-chain.md)
+
+---
+
 ## Pattern Map
 
 ![Agents Integration Patterns — complete catalog map across 7 categories: Messaging, Discovery, Context, Routing, Coordination, Resilience, and Security](img/agents-integration-patterns.png)
@@ -761,10 +813,10 @@ Runnable implementations of all 24 patterns across multiple languages and framew
 
 | Language | Framework | Status |
 |---|---|---|
-| Python | LangChain / LangGraph | ✅ 24 samples + 70 tests |
-| Java | Spring AI 1.0.0 | ✅ 22 samples + 32 tests |
-| TypeScript | LangChain.js / LangGraph.js | ✅ 22 samples |
-| C# | Microsoft Semantic Kernel | ✅ 22 samples + 34 tests |
+| Python | LangChain / LangGraph | ✅ 29 samples + 84 tests |
+| Java | Spring AI 1.0.0 | ✅ 24 samples + 40 tests |
+| TypeScript | LangChain.js / LangGraph.js | ✅ 24 samples |
+| C# | Microsoft Semantic Kernel | ✅ 24 samples + 34 tests |
 
 See [`samples/`](samples/) for setup instructions and all source code.
 

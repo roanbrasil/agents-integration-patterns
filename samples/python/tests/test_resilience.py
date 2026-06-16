@@ -92,7 +92,7 @@ def test_step2_analyze():
 
 # ── idempotent_agent ───────────────────────────────────────
 def test_idempotent_same_args_returns_cached_result():
-    from resilience.idempotent_agent import IdempotencyGuard
+    from implementation.idempotent_agent import IdempotencyGuard
     calls = {"n": 0}
     guard = IdempotencyGuard()
     def action(x: str) -> str:
@@ -105,7 +105,7 @@ def test_idempotent_same_args_returns_cached_result():
 
 
 def test_idempotent_different_args_run_separately():
-    from resilience.idempotent_agent import IdempotencyGuard
+    from implementation.idempotent_agent import IdempotencyGuard
     calls = {"n": 0}
     guard = IdempotencyGuard()
     def action(x: str) -> str:
@@ -117,7 +117,7 @@ def test_idempotent_different_args_run_separately():
 
 
 def test_idempotent_decorator():
-    from resilience.idempotent_agent import IdempotencyGuard
+    from implementation.idempotent_agent import IdempotencyGuard
     guard = IdempotencyGuard()
     calls = {"n": 0}
     @guard.protect
@@ -131,7 +131,7 @@ def test_idempotent_decorator():
 
 # ── exception_handler_chain ────────────────────────────────
 def test_retry_handler_recovers_on_transient_error():
-    from resilience.exception_handler_chain import (
+    from implementation.exception_handler_chain import (
         ExceptionHandlerChain, RetryHandler, RateLimitError,
     )
     calls = {"n": 0}
@@ -148,7 +148,7 @@ def test_retry_handler_recovers_on_transient_error():
 
 
 def test_fallback_handler_delegates_on_format_error():
-    from resilience.exception_handler_chain import (
+    from implementation.exception_handler_chain import (
         ExceptionHandlerChain, FallbackHandler, OutputFormatError,
     )
     def bad_agent(): raise OutputFormatError("bad json")
@@ -161,7 +161,7 @@ def test_fallback_handler_delegates_on_format_error():
 
 
 def test_escalate_handler_marks_as_failed():
-    from resilience.exception_handler_chain import ExceptionHandlerChain, EscalateHandler
+    from implementation.exception_handler_chain import ExceptionHandlerChain, EscalateHandler
     notified = {"exc": None}
     def notify(e): notified["exc"] = e
     def bad_agent(): raise ValueError("bad")
