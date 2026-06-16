@@ -88,3 +88,85 @@ def test_step2_analyze():
         from resilience.checkpoint_resume import step2_analyze
         result = step2_analyze({"topic": "LG", "step1_output": "LangGraph is...", "step2_output": "", "step3_output": ""})
         assert result["step2_output"] == "Challenge 1, Challenge 2"
+
+
+# ── idempotent_agent ───────────────────────────────────────
+def test_idempotent_same_args_returns_cached_result():
+    from resilience.idempotent_agent import IdempotencyGuard
+    calls = {"n": 0}
+    guard = IdempotencyGuard()
+    def action(x: str) -> str:
+        calls["n"] += 1
+        return f"result:{x}"
+    r1 = guard.execute("action", action, "hello")
+    r2 = guard.execute("action", action, "hello")
+    assert r1 == r2 == "result:hello"
+    assert calls["n"] == 1  # only ran once
+
+
+def test_idempotent_different_args_run_separately():
+    from resilience.idempotent_agent import IdempotencyGuard
+    calls = {"n": 0}
+    guard = IdempotencyGuard()
+    def action(x: str) -> str:
+        calls["n"] += 1
+        return f"result:{x}"
+    guard.execute("action", action, "a")
+    guard.execute("action", action, "b")
+    assert calls["n"] == 2
+
+
+def test_idempotent_decorator():
+    from resilience.idempotent_agent import IdempotencyGuard
+    guard = IdempotencyGuard()
+    calls = {"n": 0}
+    @guard.protect
+    def do_work(x: int) -> int:
+        calls["n"] += 1
+        return x * 2
+    assert do_work(5) == 10
+    assert do_work(5) == 10  # cached
+    assert calls["n"] == 1
+
+
+# ── exception_handler_chain ────────────────────────────────
+def test_retry_handler_recovers_on_transient_error():
+    from resilience.exception_handler_chain import (
+        ExceptionHandlerChain, RetryHandler, RateLimitError,
+    )
+    calls = {"n": 0}
+    def flaky():
+        calls["n"] += 1
+        if calls["n"] < 2:
+            raise RateLimitError("rate limited")
+        return "ok"
+    chain = ExceptionHandlerChain().add(RetryHandler(on=RateLimitError, max_retries=3))
+    result = chain.execute(flaky)
+    assert result.success
+    assert result.value == "ok"
+    assert result.handler_used == "retry"
+
+
+def test_fallback_handler_delegates_on_format_error():
+    from resilience.exception_handler_chain import (
+        ExceptionHandlerChain, FallbackHandler, OutputFormatError,
+    )
+    def bad_agent(): raise OutputFormatError("bad json")
+    def good_fallback(): return "fallback result"
+    chain = ExceptionHandlerChain().add(FallbackHandler(on=OutputFormatError, fallback=good_fallback))
+    result = chain.execute(bad_agent)
+    assert result.success
+    assert result.value == "fallback result"
+    assert result.handler_used == "fallback"
+
+
+def test_escalate_handler_marks_as_failed():
+    from resilience.exception_handler_chain import ExceptionHandlerChain, EscalateHandler
+    notified = {"exc": None}
+    def notify(e): notified["exc"] = e
+    def bad_agent(): raise ValueError("bad")
+    chain = ExceptionHandlerChain().add(EscalateHandler(on=Exception, notify=notify))
+    result = chain.execute(bad_agent)
+    assert not result.success
+    assert result.handler_used == "escalated"
+    assert notified["exc"] is not None

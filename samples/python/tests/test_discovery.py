@@ -59,3 +59,30 @@ def test_agent_proxy_raises_after_max_retries():
         raise RuntimeError("always fails")
     with pytest.raises(RuntimeError, match="All"):
         agent_proxy("task", always_fails, max_retries=1)
+
+
+# ── broker ─────────────────────────────────────────────────
+def test_broker_routes_to_highest_quality_provider():
+    from discovery.broker import Broker
+    selected = {"name": None}
+    def low(text): selected["name"] = "low"; return "low"
+    def high(text): selected["name"] = "high"; return "high"
+    broker = Broker().register("cap", low, name="low", quality=0.5).register("cap", high, name="high", quality=0.9)
+    broker.dispatch("cap", "input")
+    assert selected["name"] == "high"
+
+
+def test_broker_raises_when_no_provider():
+    from discovery.broker import Broker
+    broker = Broker()
+    with pytest.raises(RuntimeError, match="no provider"):
+        broker.dispatch("unknown_capability", "input")
+
+
+def test_broker_tracks_call_counts():
+    from discovery.broker import Broker
+    broker = Broker().register("cap", lambda x: "ok", name="p1", quality=1.0)
+    broker.dispatch("cap", "a")
+    broker.dispatch("cap", "b")
+    status = broker.status()
+    assert status[0]["calls"] == 2

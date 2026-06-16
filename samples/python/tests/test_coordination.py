@@ -165,3 +165,68 @@ def test_magentic_round_cap():
     ledger = mgr.run("endless")
     assert calls["n"] == 3
     assert any("round cap" in q for q in ledger.open_questions)
+
+
+# ── mediator ───────────────────────────────────────────────
+def test_mediator_routes_to_registered_agents():
+    from coordination.mediator import MediatorAgent
+    log = []
+    def agent_a(task, ctx): log.append("a"); return "response_a"
+    def agent_b(task, ctx): log.append("b"); return "response_b"
+    mediator = MediatorAgent(max_rounds=2).register("a", agent_a).register("b", agent_b)
+    mediator.coordinate("test goal")
+    assert "a" in log and "b" in log
+
+
+def test_mediator_context_accumulates():
+    from coordination.mediator import MediatorAgent
+    mediator = MediatorAgent(max_rounds=1)
+    mediator.register("worker", lambda task, ctx: f"done:{len(ctx)}")
+    mediator.coordinate("goal")
+    assert len(mediator.context) >= 2  # goal + worker response
+
+
+def test_mediator_single_send():
+    from coordination.mediator import MediatorAgent
+    mediator = MediatorAgent()
+    mediator.register("echo", lambda task, ctx: f"echo:{task}")
+    response = mediator.send(to="echo", content="hello")
+    assert response == "echo:hello"
+
+
+# ── saga ───────────────────────────────────────────────────
+def test_saga_success_no_compensation():
+    from coordination.saga import Saga
+    log = []
+    def step1(ctx): log.append("s1"); return {"s1": True}
+    def comp1(out): log.append("c1")
+    def step2(ctx): log.append("s2"); return {"s2": True}
+    def comp2(out): log.append("c2")
+    result = Saga().step("s1", step1, comp1).step("s2", step2, comp2).execute({})
+    assert result.success
+    assert result.compensated == []
+    assert "c1" not in log and "c2" not in log
+
+
+def test_saga_failure_triggers_reverse_compensation():
+    from coordination.saga import Saga
+    log = []
+    def step1(ctx): log.append("s1"); return {}
+    def comp1(out): log.append("c1")
+    def step2(ctx): log.append("s2"); raise RuntimeError("oops")
+    def comp2(out): log.append("c2")
+    result = Saga().step("s1", step1, comp1).step("s2", step2, comp2).execute({})
+    assert not result.success
+    assert result.failed_at == "s2"
+    assert "c1" in log
+    assert "c2" not in log
+
+
+def test_saga_records_completed_steps():
+    from coordination.saga import Saga
+    def ok(ctx): return {}
+    def noop(out): pass
+    def fail(ctx): raise ValueError("boom")
+    result = Saga().step("a", ok, noop).step("b", ok, noop).step("c", fail, noop).execute({})
+    assert result.completed == ["a", "b"]
+    assert result.failed_at == "c"
