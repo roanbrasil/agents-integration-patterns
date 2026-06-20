@@ -189,3 +189,106 @@ export ANTHROPIC_API_KEY=your-key-here
 | security | `Security/PromptFirewall.cs` | `Security/PromptFirewallTests.cs` |
 | evaluation | `Evaluation/LlmAsJudge.cs` | `Evaluation/LlmAsJudgeTests.cs` |
 | evaluation | `Evaluation/EnsembleJudge.cs` | `Evaluation/EnsembleJudgeTests.cs` |
+
+## Rust
+
+**Requirements:** Rust 1.75+ (2021 edition), Cargo. No API key needed — all examples use a deterministic `FakeAgent`.
+
+```bash
+cd samples/rust
+
+# Check all examples compile
+cargo check
+
+# Run any pattern
+cargo run --example messaging_direct_message
+cargo run --example routing_pipeline
+cargo run --example resilience_circuit_breaker
+cargo run --example evaluation_reflection_loop
+# etc.
+```
+
+All examples run fully offline. Each is a self-contained `examples/<category>_<pattern>.rs` file using `FakeAgent` from `src/lib.rs`.
+
+| Category | Example | Pattern |
+|---|---|---|
+| messaging | `messaging_direct_message` | Direct Message |
+| messaging | `messaging_broadcast_message` | Broadcast Message |
+| messaging | `messaging_blackboard` | Blackboard |
+| discovery | `discovery_agent_card_registry` | Agent Card Registry |
+| discovery | `discovery_agent_proxy` | Agent Proxy |
+| discovery | `discovery_broker` | Broker |
+| context | `context_context_injection` | Context Injection |
+| context | `context_tool_provider` | Tool Provider |
+| routing | `routing_content_based_router` | Content-Based Router |
+| routing | `routing_scatter_gather` | Scatter-Gather |
+| routing | `routing_pipeline` | Pipeline |
+| coordination | `coordination_orchestrator` | Orchestrator |
+| coordination | `coordination_supervised_delegation` | Supervised Delegation |
+| coordination | `coordination_choreography` | Choreography |
+| coordination | `coordination_peer_to_peer_delegation` | Peer-to-Peer Delegation |
+| coordination | `coordination_mediator` | Mediator Agent |
+| coordination | `coordination_group_chat` | Group Chat |
+| coordination | `coordination_saga` | Saga / Compensating Action |
+| coordination | `coordination_magentic` | Magentic |
+| resilience | `resilience_circuit_breaker` | Circuit Breaker |
+| resilience | `resilience_dead_letter_agent` | Dead Letter Agent |
+| resilience | `resilience_checkpoint_resume` | Checkpoint & Resume |
+| implementation | `implementation_idempotent_agent` | Idempotent Agent |
+| security | `security_least_privilege_tool_scope` | Least-Privilege Tool Scope |
+| security | `security_trust_boundary` | Trust Boundary |
+| security | `security_prompt_firewall` | Prompt Firewall |
+| evaluation | `evaluation_llm_as_judge` | LLM-as-Judge |
+| evaluation | `evaluation_ensemble_judge` | Ensemble Judge |
+| evaluation | `evaluation_reflection_loop` | Reflection Loop |
+
+## Go
+
+**Requirements:** Go 1.22+. No API key needed — all patterns use a deterministic `FakeAgent` from `shared/fake_agent.go`. No external dependencies (stdlib only).
+
+```bash
+cd samples/go
+
+# Run all patterns at once
+go run ./cmd/main.go
+
+# Run a single pattern file directly
+go run ./messaging/direct_message.go ./shared/fake_agent.go
+
+# Build check
+go build ./...
+```
+
+Each pattern file exposes a `Run()` function. `cmd/main.go` calls all 29 of them in sequence.
+
+| Category | File | Pattern |
+|---|---|---|
+| messaging | `messaging/direct_message.go` | Direct Message |
+| messaging | `messaging/broadcast_message.go` | Broadcast Message |
+| messaging | `messaging/blackboard.go` | Blackboard |
+| discovery | `discovery/agent_card_registry.go` | Agent Card Registry |
+| discovery | `discovery/agent_proxy.go` | Agent Proxy |
+| discovery | `discovery/broker.go` | Broker |
+| context | `context/context_injection.go` | Context Injection |
+| context | `context/tool_provider.go` | Tool Provider |
+| routing | `routing/content_based_router.go` | Content-Based Router |
+| routing | `routing/scatter_gather.go` | Scatter-Gather |
+| routing | `routing/pipeline.go` | Pipeline |
+| coordination | `coordination/orchestrator.go` | Orchestrator |
+| coordination | `coordination/supervised_delegation.go` | Supervised Delegation |
+| coordination | `coordination/choreography.go` | Choreography |
+| coordination | `coordination/peer_to_peer_delegation.go` | Peer-to-Peer Delegation |
+| coordination | `coordination/mediator.go` | Mediator Agent |
+| coordination | `coordination/group_chat.go` | Group Chat |
+| coordination | `coordination/saga.go` | Saga / Compensating Action |
+| coordination | `coordination/magentic.go` | Magentic |
+| resilience | `resilience/circuit_breaker.go` | Circuit Breaker |
+| resilience | `resilience/dead_letter_agent.go` | Dead Letter Agent |
+| resilience | `resilience/checkpoint_resume.go` | Checkpoint & Resume |
+| implementation | `implementation/idempotent_agent.go` | Idempotent Agent |
+| security | `security/least_privilege_tool_scope.go` | Least-Privilege Tool Scope |
+| security | `security/trust_boundary.go` | Trust Boundary |
+| security | `security/prompt_firewall.go` | Prompt Firewall |
+| evaluation | `evaluation/llm_as_judge.go` | LLM-as-Judge |
+| evaluation | `evaluation/ensemble_judge.go` | Ensemble Judge |
+| evaluation | `evaluation/reflection_loop.go` | Reflection Loop |

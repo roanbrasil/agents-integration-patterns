@@ -890,8 +890,8 @@ Runnable implementations of all 24 patterns across multiple languages and framew
 | Java | Spring AI 1.0.0 | ✅ 24 samples + 40 tests |
 | TypeScript | LangChain.js / LangGraph.js | ✅ 24 samples |
 | C# | Microsoft Semantic Kernel | ✅ 24 samples + 34 tests |
-
-> **Pattern count:** 27 patterns across 8 categories. Pattern #27 (Reflection Loop) was added in June 2026; code samples pending.
+| Rust | tokio + serde (stdlib-like, no LLM SDK) | ✅ 29 samples, no API key needed |
+| Go | stdlib only (no external deps) | ✅ 29 samples, no API key needed |
 
 See [`samples/`](samples/) for setup instructions and all source code.
 
