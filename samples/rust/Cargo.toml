@@ -1,0 +1,126 @@
+[package]
+name = "aip-samples"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+
+[[example]]
+name = "messaging_direct_message"
+path = "examples/messaging_direct_message.rs"
+
+[[example]]
+name = "messaging_broadcast_message"
+path = "examples/messaging_broadcast_message.rs"
+
+[[example]]
+name = "messaging_blackboard"
+path = "examples/messaging_blackboard.rs"
+
+[[example]]
+name = "discovery_agent_card_registry"
+path = "examples/discovery_agent_card_registry.rs"
+
+[[example]]
+name = "discovery_agent_proxy"
+path = "examples/discovery_agent_proxy.rs"
+
+[[example]]
+name = "discovery_broker"
+path = "examples/discovery_broker.rs"
+
+[[example]]
+name = "context_context_injection"
+path = "examples/context_context_injection.rs"
+
+[[example]]
+name = "context_tool_provider"
+path = "examples/context_tool_provider.rs"
+
+[[example]]
+name = "routing_content_based_router"
+path = "examples/routing_content_based_router.rs"
+
+[[example]]
+name = "routing_scatter_gather"
+path = "examples/routing_scatter_gather.rs"
+
+[[example]]
+name = "routing_pipeline"
+path = "examples/routing_pipeline.rs"
+
+[[example]]
+name = "coordination_orchestrator"
+path = "examples/coordination_orchestrator.rs"
+
+[[example]]
+name = "coordination_supervised_delegation"
+path = "examples/coordination_supervised_delegation.rs"
+
+[[example]]
+name = "coordination_choreography"
+path = "examples/coordination_choreography.rs"
+
+[[example]]
+name = "coordination_peer_to_peer_delegation"
+path = "examples/coordination_peer_to_peer_delegation.rs"
+
+[[example]]
+name = "coordination_mediator"
+path = "examples/coordination_mediator.rs"
+
+[[example]]
+name = "coordination_group_chat"
+path = "examples/coordination_group_chat.rs"
+
+[[example]]
+name = "coordination_saga"
+path = "examples/coordination_saga.rs"
+
+[[example]]
+name = "coordination_magentic"
+path = "examples/coordination_magentic.rs"
+
+[[example]]
+name = "resilience_circuit_breaker"
+path = "examples/resilience_circuit_breaker.rs"
+
+[[example]]
+name = "resilience_dead_letter_agent"
+path = "examples/resilience_dead_letter_agent.rs"
+
+[[example]]
+name = "resilience_checkpoint_resume"
+path = "examples/resilience_checkpoint_resume.rs"
+
+[[example]]
+name = "implementation_idempotent_agent"
+path = "examples/implementation_idempotent_agent.rs"
+
+[[example]]
+name = "security_least_privilege_tool_scope"
+path = "examples/security_least_privilege_tool_scope.rs"
+
+[[example]]
+name = "security_trust_boundary"
+path = "examples/security_trust_boundary.rs"
+
+[[example]]
+name = "security_prompt_firewall"
+path = "examples/security_prompt_firewall.rs"
+
+[[example]]
+name = "evaluation_llm_as_judge"
+path = "examples/evaluation_llm_as_judge.rs"
+
+[[example]]
+name = "evaluation_ensemble_judge"
+path = "examples/evaluation_ensemble_judge.rs"
+
+[[example]]
+name = "evaluation_reflection_loop"
+path = "examples/evaluation_reflection_loop.rs"
