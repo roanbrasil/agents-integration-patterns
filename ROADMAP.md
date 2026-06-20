@@ -152,7 +152,7 @@ Numbered, real citations only.
 
 - **Rate-Limited Tool Scope** (Security) — cost/abuse control as a first-class scope dimension
 - **Multi-modal Context Injection** (Context) — vision/audio as MCP resources
-- **Reflection Loop** (Evaluation) — self-critique before external judging
+- ~~**Reflection Loop** (Evaluation)~~ — ✅ **Added June 2026** as pattern #27; grounded by MindStudio (2025) and Madaan et al. NeurIPS 2023. Code samples pending.
 - **Token-Budget Governor** (Resilience) — bounded spend per task, ties to your token-efficiency research
 
 ### Discipline

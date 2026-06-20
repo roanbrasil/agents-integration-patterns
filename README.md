@@ -60,6 +60,33 @@ Both protocols co-exist under the Linux Foundation's Agentic AI Foundation (AAIF
 
 ---
 
+## Two Engineering Disciplines
+
+Building reliable agent systems requires two distinct disciplines that are easy to conflate but must be designed separately:
+
+| Discipline | Focus | Core question | Failure symptom |
+|---|---|---|---|
+| **Loop Engineering** | The iterative cycle an agent runs toward its goal | What does the agent do each pass, and when does it stop? | Runaway loops, premature stops, stalling |
+| **Harness Engineering** | Everything surrounding the agent — scaffolding, plumbing, infrastructure | What can the agent access, and how does it operate safely? | Production crashes, invisible failures, unrecoverable errors |
+
+**Loop Engineering** designs what happens *inside* each iteration: what tools are called, how progress is evaluated, what triggers the next cycle, and — most critically — the **completion criteria**. Vague exit conditions are the leading cause of loop failure: "the report is written" is not a criterion; "the report contains an executive summary, three supporting sections each with at least two data citations, and passes a relevance check" is.
+
+**Harness Engineering** designs what happens *around* the loop: tool routing and credential management, memory and context handoffs, output pipelines, observability, error recovery, and security. A common failure mode is **context pollution** — accumulated errors and irrelevant information passing between sessions without pruning, degrading later iterations.
+
+### Pattern alignment
+
+| Loop Engineering patterns | Harness Engineering patterns |
+|---|---|
+| Reflection Loop, LLM-as-Judge, Ensemble Judge | Checkpoint & Resume, Circuit Breaker, Dead Letter Agent |
+| Orchestrator, Choreography, Saga | Exception Handler Chain, Idempotent Agent, Trust Boundary |
+| Content-Based Router, Pipeline | Blackboard, Context Injection, Tool Provider |
+
+> **Build sequence:** establish the loop first (iteration logic, completion signal, basic failure handling), test with simplified inputs until behavior stabilizes, then add the harness. Building both together makes failures harder to attribute — did the wrong output come from faulty iteration logic or unsanitized tool data?
+
+*Source: MindStudio (2025). [Loop Engineering vs Harness Engineering](https://www.mindstudio.ai/blog/loop-engineering-vs-harness-engineering) and [What is Harness Engineering?](https://www.mindstudio.ai/blog/what-is-harness-engineering-ai-coding)*
+
+---
+
 ## How to Read These Patterns
 
 Each pattern follows this structure:
@@ -207,6 +234,28 @@ See full pattern: [patterns/discovery/agent-card-registry.md](patterns/discovery
 **Related Patterns:** [Agent Card Registry](#4-agent-card-registry), [Circuit Breaker](#16-circuit-breaker).
 
 See full pattern: [patterns/discovery/agent-proxy.md](patterns/discovery/agent-proxy.md)
+
+---
+
+#### 25. Broker
+
+**Intent:** Dynamically match tasks to capability providers at runtime by selecting the best available candidate based on quality scores and load — going beyond a static registry lookup to active routing.
+
+**Problem:** A static registry returns all agents with a matching capability but does not answer: *which one should I call right now?* When multiple providers exist, selection logic (load balancing, quality routing, version preference) gets duplicated across every caller.
+
+**Solution:** A **broker** maintains a registry of providers with declared capabilities and quality scores. On each task, it filters by capability, ranks by score and load, routes to the best candidate, and updates scores based on outcomes. Callers express *what* they need; the broker decides *who* delivers it.
+
+**Consequences:**
+- ✅ Callers decoupled from specific provider instances
+- ✅ Quality-aware routing improves average answer quality
+- ❌ Broker is a single point of failure and potential bottleneck
+- ❌ Quality scores require outcome feedback — adds instrumentation
+
+**Known Uses:** MCP multi-server capability selection, LangChain tool selection (LLM-driven broker), Buschmann POSA1 Broker pattern, AWS API Gateway routing.
+
+**Related Patterns:** [Agent Card Registry](#4-agent-card-registry) (passive lookup; Broker is the active selector built on top of it), [Circuit Breaker](#18-circuit-breaker) (Broker excludes providers the breaker has opened), [Content-Based Router](#8-content-based-router) (routes by task content; Broker routes by provider quality).
+
+See full pattern: [patterns/discovery/broker.md](patterns/discovery/broker.md)
 
 ---
 
@@ -706,6 +755,30 @@ See full pattern: [patterns/evaluation/ensemble-judge.md](patterns/evaluation/en
 
 ---
 
+#### 27. Reflection Loop
+
+**Intent:** Generate output, evaluate it against an explicit rubric, revise based on structured critique, and repeat until criteria are met or an iteration limit is reached.
+
+**Problem:** Single-pass generation fails complex criteria-bound tasks. The agent cannot know upfront whether its output satisfies structural, factual, or rubric requirements that are only assessable *after* generation.
+
+**Solution:** Pair a **Generator** with a **Critic**. The Critic evaluates output against a precise rubric (not a vague "is it good?" but verifiable criteria) and returns pass/fail + structured feedback. If the output fails, the Generator revises with the critique. An **Iteration Guard** enforces a maximum cycle count; exhausted loops escalate to Dead Letter Agent.
+
+The critical design surface is the exit condition. Vague criteria produce runaway loops or premature stops. Precise, verifiable criteria are what make the loop terminate reliably.
+
+**Consequences:**
+- ✅ Output quality improves measurably over single-pass on criteria-bound tasks
+- ✅ Rubric makes quality objective and loggable — failure patterns become visible
+- ❌ Each revision cycle adds latency (F1) and token cost (F3)
+- ❌ Generator and Critic sharing the same base model share blind spots — correlated errors survive the loop
+
+**Known Uses:** LangChain Self-Critique Chain, AutoGen two-agent reflection, Anthropic Constitutional AI, Self-Refine (Madaan et al., NeurIPS 2023).
+
+**Related Patterns:** [LLM-as-Judge](#23-llm-as-judge) (the Critic role), [Ensemble Judge](#24-ensemble-judge) (use when high-confidence exit criteria are required), [Dead Letter Agent](#17-dead-letter-agent) (escalation on iteration exhaustion).
+
+See full pattern: [patterns/evaluation/reflection-loop.md](patterns/evaluation/reflection-loop.md)
+
+---
+
 ---
 
 ### 🔧 Implementation Patterns
@@ -818,6 +891,8 @@ Runnable implementations of all 24 patterns across multiple languages and framew
 | TypeScript | LangChain.js / LangGraph.js | ✅ 24 samples |
 | C# | Microsoft Semantic Kernel | ✅ 24 samples + 34 tests |
 
+> **Pattern count:** 27 patterns across 8 categories. Pattern #27 (Reflection Loop) was added in June 2026; code samples pending.
+
 See [`samples/`](samples/) for setup instructions and all source code.
 
 ---
@@ -826,8 +901,9 @@ See [`samples/`](samples/) for setup instructions and all source code.
 
 | Document | Description |
 |---|---|
-| [`patterns/FORCES.md`](patterns/FORCES.md) | Shared vocabulary of 11 design tensions (F1–F11) referenced by all patterns |
+| [`patterns/FORCES.md`](patterns/FORCES.md) | Shared vocabulary of 14 design tensions (F1–F14) referenced by all patterns |
 | [`patterns/FAILURE-MAP.md`](patterns/FAILURE-MAP.md) | 14 MAST failure modes mapped to mitigating patterns — the catalog's empirical differentiator |
+| [`patterns/TRANSPORT.md`](patterns/TRANSPORT.md) | Transport layer guide: HTTP/2, HTTP/3/QUIC, WebSocket, gRPC, Kafka, Iggy, NATS, RabbitMQ — mapped to patterns |
 | [`COMPARISON.md`](COMPARISON.md) | How this catalog relates to Microsoft, Anthropic, LangChain, EIP, and academic surveys |
 | [`ROADMAP.md`](ROADMAP.md) | Engineering roadmap: Forces, MAST grounding, CI gates, site |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Pattern template requirements and contribution guidelines |

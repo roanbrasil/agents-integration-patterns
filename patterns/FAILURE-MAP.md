@@ -24,7 +24,7 @@ That is the entire thesis of this catalog: integration patterns are how you engi
 | FM-1.2 | Disobey role specification | Content-Based Router ✅, Supervised Delegation ◐ |
 | FM-1.3 | Step repetition | Checkpoint & Resume ✅, Idempotent Agent ✅, Orchestrator ◐ |
 | FM-1.4 | Loss of conversation history / context | Blackboard ✅, Context Injection ✅, Checkpoint & Resume ✅ |
-| FM-1.5 | Unaware of termination conditions | Orchestrator ✅, LLM-as-Judge ◐ |
+| FM-1.5 | Unaware of termination conditions | Orchestrator ✅, Reflection Loop ✅, LLM-as-Judge ◐ |
 
 ### Category 2 — Inter-Agent Misalignment (FM-2.x)
 
@@ -62,6 +62,7 @@ The same data, indexed by pattern. Useful when evaluating whether a pattern earn
 | **Content-Based Router** | FM-1.2 (role disobedience), FM-2.3 (derailment) |
 | **Group Chat** | FM-3.2 (incomplete verification, via maker-checker), FM-2.5 (ignored input), FM-2.6 (reasoning–action mismatch) |
 | **Magentic** | FM-1.3 (step repetition, via ledger), FM-1.5 (termination, via stall detection) — note: also *introduces* derailment/termination risk |
+| **Reflection Loop** | FM-2.6 (reasoning–action mismatch), FM-1.1 (disobey task spec), FM-3.1 (premature termination), FM-3.2 (incomplete verification) |
 
 ---
 
